@@ -399,6 +399,10 @@ panelEl.addEventListener('click', async (event) => {
   if (stationId === '') {
     player.stop();
     statusEl.textContent = '停止';
+    const button = panelEl.querySelector('button.playing');
+    if (button) {
+      button.classList.remove('playing');
+    }
     currentStationId = null;
     return;
   } else if (!stationId) {
