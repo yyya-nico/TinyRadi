@@ -197,8 +197,12 @@ class API {
     if (!auth2Res.ok) {
       throw new Error('auth2 failed');
     }
+    const area = await auth2Res.text().then((txt) => {
+      const [id, nameJp, nameEn] = txt.trim().split(',');
+      return { id, nameJp, nameEn };
+    });
 
-    return authToken;
+    return { authToken, area};
   };
 
   stationStreamUrl = async (stationId: string, areafree = false) => {
@@ -227,18 +231,14 @@ class Player {
 
   private api: API;
 
-  private authToken: string | null = null;
+  private authToken: string;
 
   private hls: Hls | null = null;
 
-  constructor(api: API, audio: HTMLAudioElement) {
+  constructor(api: API, audio: HTMLAudioElement, authToken = '') {
     this.api = api;
     this.audio = audio;
-    this.api.authorize().then((token) => {
-      this.authToken = token;
-    }).catch((error) => {
-      console.error('authorization failed:', error);
-    });
+    this.authToken = authToken;
   }
 
   stop = () => {
@@ -254,7 +254,7 @@ class Player {
   play = async (stationId: string) => {
     this.stop();
 
-    const authToken = this.authToken ?? await this.api.authorize();
+    const authToken = this.authToken ?? (await this.api.authorize()).authToken;
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
 
     if (!Hls.isSupported()) {
@@ -312,7 +312,8 @@ if (!statusEl || !areaEl || !panelEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
-const player = new Player(api, audioEl);
+const authResult = await api.authorize();
+const player = new Player(api, audioEl, authResult.authToken);
 
 const pickCurrentProgram = (programs: Program[]) => {
     const now = Date.now();
@@ -357,13 +358,13 @@ const renderStations = async (areaId: string) => {
 
 const init = async () => {
   try {
-    const area = await api.area();
+    const area = authResult.area;
     const areaId = area.id;
     if (!areaId) {
       statusEl.textContent = 'エリアの検出に失敗しました';
       return;
     }
-    const areaName = area.name?.split(' ').shift() ?? '不明なエリア';
+    const areaName = area.nameJp ?? '不明なエリア';
     areaEl.textContent = areaName;
 
     statusEl.textContent = '局を選択してください';
