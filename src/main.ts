@@ -297,7 +297,7 @@ app.innerHTML = `
   <main>
     <h1>TinyRadi</h1>
     <p id="area"></p>
-    <p id="status">loading...</p>
+    <p id="status">読み込み中...</p>
     <ul id="panel"></ul>
     <audio id="audio"></audio>
   </main>
@@ -349,7 +349,7 @@ const renderStations = async (areaId: string) => {
         </li>`;
     })
     .concat([
-      `<li><button value="" id="stop"><h2>Stop</h2></button></li>`,
+      `<li><button value="" id="stop"><h2>停止</h2></button></li>`,
     ])
     .join('');
   document.querySelector<HTMLButtonElement>('.playing')?.focus();
@@ -360,13 +360,13 @@ const init = async () => {
     const area = await api.area();
     const areaId = area.id;
     if (!areaId) {
-      statusEl.textContent = 'area detection failed';
+      statusEl.textContent = 'エリアの検出に失敗しました';
       return;
     }
-    const areaName = area.name?.split(' ').shift() ?? 'unknown area';
+    const areaName = area.name?.split(' ').shift() ?? '不明なエリア';
     areaEl.textContent = areaName;
 
-    statusEl.textContent = 'select a station to play';
+    statusEl.textContent = '局を選択してください';
 
     await renderStations(areaId);
     const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
@@ -378,7 +378,7 @@ const init = async () => {
     }, nextMinuteDelay);
 
   } catch (error) {
-    statusEl.textContent = `init failed: ${String(error)}`;
+    statusEl.textContent = `初期化に失敗しました: ${String(error)}`;
   }
 };
 
@@ -391,25 +391,25 @@ panelEl.addEventListener('click', async (event) => {
   const stationId = target?.value;
   if (stationId === '') {
     player.stop();
-    statusEl.textContent = 'stopped';
+    statusEl.textContent = '停止';
     currentStationId = null;
     return;
   } else if (!stationId) {
-    statusEl.textContent = 'station is not selected';
+    statusEl.textContent = '局が選択されていません';
     return;
   }
 
-  statusEl.textContent = `starting...`;
+  statusEl.textContent = `開始しています...`;
   try {
     await player.play(stationId);
-    statusEl.textContent = 'now playing';
+    statusEl.textContent = '再生中';
     const buttons = panelEl.querySelectorAll('button');
     buttons.forEach((button) => {
       button.classList.toggle('playing', button === target);
     });
     currentStationId = stationId;
   } catch (error) {
-    statusEl.textContent = `playback failed: ${String(error)}`;
+    statusEl.textContent = `再生に失敗しました: ${String(error)}`;
   }
 });
 
