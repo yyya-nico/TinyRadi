@@ -342,8 +342,14 @@ const renderStations = async (areaId: string) => {
       return `
         <li>
           <button value="${data.station.id}" class="${isPlaying ? 'playing' : ''}">
-            <h2><span title="${title}">${title}</span></h2>
-            <h3><span title="${stationName}">${stationName}</span></h3>
+            <h2>
+              <div class="title" title="${title}">
+                <span>${title}</span>
+              </div>
+              <div class="station-name" title="${stationName}">
+                <span>${stationName}</span>
+              </div>
+            </h2>
             <p><span title="${pfm}">${pfm}</span></p>
             <p class="time"><span title="${time}">${time}</span></p>
           </button>

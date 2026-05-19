@@ -37,24 +37,27 @@
         }
 
         span {
-            display: block;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
         }
-        
+
         h2 {
-            display: flex;
-            align-items: center;
-            height: 24px;
             font-size: 1.2em;
         }
 
-        h3 {
+        div, p {
             display: flex;
             align-items: center;
+        }
+        
+        .title {
+            height: 24px;
+        }
+
+        .station-name {
             height: 20px;
-            font-size: 1em;
+            font-size: 0.9em;
         }
 
         .time {
