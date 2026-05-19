@@ -13,7 +13,7 @@
             ]
         },
         "condition": {
-            "urlFilter": "||radiko.jp/",
+            "urlFilter": "||radiko.jp/|",
             "resourceTypes": ["main_frame", "sub_frame"]
         }
     }
