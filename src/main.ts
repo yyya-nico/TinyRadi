@@ -335,19 +335,19 @@ const renderStations = async (areaId: string) => {
     .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
       const nowProgram = pickCurrentProgram(data.programs);
       const isPlaying = currentStationId === data.station.id;
-      const title = nowProgram?.title ?? 'no title';
       const stationName = data.station.name ?? 'unknown station';
+      const title = nowProgram?.title ?? 'no title';
       const pfm = nowProgram?.pfm ?? '';
       const time = nowProgram?.time?.formatted ?? 'unknown time';
       return `
         <li>
           <button value="${data.station.id}" class="${isPlaying ? 'playing' : ''}">
             <h2>
-              <div class="title" title="${title}">
-                <span>${title}</span>
-              </div>
               <div class="station-name" title="${stationName}">
                 <span>${stationName}</span>
+              </div>
+              <div class="title" title="${title}">
+                <span>${title}</span>
               </div>
             </h2>
             <p><span title="${pfm}">${pfm}</span></p>

@@ -50,20 +50,19 @@
             display: flex;
             align-items: center;
         }
+
+        .station-name {
+            height: 17px;
+            font-size: 0.7em;
+        }
         
         .title {
             height: 24px;
         }
 
-        .station-name {
-            height: 20px;
-            font-size: 0.9em;
-        }
-
         .time {
             margin-block-start: auto;
             align-self: flex-end;
-            font-size: 0.8em;
         }
     }
 }
