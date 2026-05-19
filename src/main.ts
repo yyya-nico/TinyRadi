@@ -15,6 +15,30 @@ type Station = {
   href: string | null;
 };
 
+type Program = {
+  time_raw: {
+    ft: string | null;
+    to: string | null;
+    ftl: string | null;
+    tol: string | null;
+    dur: string | null;
+  };
+  time: {
+    ft: Date | null;
+    to: Date | null;
+    ftl: Date | null;
+    tol: Date | null;
+    dur: number | null;
+    formatted: string | null;
+  }
+  title: string | null;
+  url: string | null;
+  desc: string | null;
+  info: string | null;
+  pfm: string | null;
+  img: string | null;
+};
+
 class API {
   private static readonly AUTH_KEY_VALUE = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa';
   private appId: string;
@@ -23,6 +47,20 @@ class API {
   private parseXml = (txt: string) => {
     const parser = new DOMParser();
     return parser.parseFromString(txt, 'application/xml');
+  };
+  
+  private getDate = (dateString: string) => {
+    const year = Number(dateString.slice(0, 4));
+    const month = Number(dateString.slice(4, 6)) - 1;
+    const day = Number(dateString.slice(6, 8));
+    const hours = Number(dateString.slice(8, 10));
+    const minutes = Number(dateString.slice(10, 12));
+
+    return new Date(year, month, day, hours, minutes);
+  };
+
+  private formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   private decodeXmlEntity = (value: string) => value.replaceAll('&amp;', '&');
@@ -78,13 +116,21 @@ class API {
           name: el.querySelector('name')?.textContent || null,
         };
         const programs = Array.from(el.querySelectorAll('prog')).map((el) => {
-          const program = {
-            time: {
+          const program: Program = {
+            time_raw: {
               ft: el.getAttribute('ft'),
               to: el.getAttribute('to'),
               ftl: el.getAttribute('ftl'),
               tol: el.getAttribute('tol'),
               dur: el.getAttribute('dur'),
+            },
+            time: {
+              ft: el.getAttribute('ft') ? this.getDate(el.getAttribute('ft')!) : null,
+              to: el.getAttribute('to') ? this.getDate(el.getAttribute('to')!) : null,
+              ftl: el.getAttribute('ftl') ? this.getDate(el.getAttribute('ftl')!) : null,
+              tol: el.getAttribute('tol') ? this.getDate(el.getAttribute('tol')!) : null,
+              dur: el.getAttribute('dur') ? Number(el.getAttribute('dur')) : null,
+              formatted: null,
             },
             title: el.querySelector('title')?.textContent || null,
             url: el.querySelector('url')?.textContent || null,
@@ -93,9 +139,12 @@ class API {
             pfm: el.querySelector('pfm')?.textContent || null,
             img: el.querySelector('img')?.textContent || null,
           };
+          if (program.time.ft && program.time.to) {
+            program.time.formatted = `${this.formatTime(program.time.ft)} - ${this.formatTime(program.time.to)}`;
+          }
           return program;
         });
-        return { station, programs };
+        return { station, programs } as { station: { id: string | null; name: string | null }; programs: Program[] };
       });
       return stations;
     });
@@ -247,54 +296,101 @@ if (!app) {
 app.innerHTML = `
   <main>
     <h1>TinyRadi</h1>
+    <p id="area"></p>
     <p id="status">loading...</p>
-    <label>
-      Station<br />
-      <select id="station" size="10"></select>
-    </label>
-    <div>
-      <button id="stop" type="button">Stop</button>
-    </div>
+    <ul id="panel"></ul>
     <audio id="audio"></audio>
   </main>
 `;
 
 const statusEl = document.querySelector<HTMLParagraphElement>('#status');
-const stationEl = document.querySelector<HTMLSelectElement>('#station');
-const stopEl = document.querySelector<HTMLButtonElement>('#stop');
+const areaEl = document.querySelector<HTMLParagraphElement>('#area');
+const panelEl = document.querySelector<HTMLUListElement>('#panel');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!statusEl || !stationEl || !stopEl || !audioEl) {
+if (!statusEl || !areaEl || !panelEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
 const player = new Player(api, audioEl);
 
+const pickCurrentProgram = (programs: Program[]) => {
+    const now = Date.now();
+
+    for (let index = 0; index < programs.length; index += 1) {
+        const program = programs[index];
+        if (!program.time.to || now < program.time.to.getTime()) {
+            return program;
+        }
+    }
+
+    return programs.length > 0 ? programs[programs.length - 1] : null;
+};
+
+const renderStations = async (areaId: string) => {
+  const nowPrograms = await api.nowPrograms(areaId);
+
+  panelEl.innerHTML = nowPrograms
+    .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
+      const nowProgram = pickCurrentProgram(data.programs);
+      const isPlaying = currentStationId === data.station.id;
+      return `
+        <li>
+          <button value="${data.station.id}" class="${isPlaying ? 'playing' : ''}">
+            ${data.station.name ?? 'unknown station'}<br />
+            ${nowProgram?.title ?? 'no title'}<br />
+            ${nowProgram?.pfm ?? ''}<br />
+            ${nowProgram?.time?.formatted ?? 'unknown time'}
+          </button>
+        </li>`;
+    })
+    .concat([
+      `<li><button value="" id="stop">Stop</button></li>`,
+    ])
+    .join('');
+  document.querySelector<HTMLButtonElement>('.playing')?.focus();
+};
+
 const init = async () => {
   try {
     const area = await api.area();
-    if (!area.id) {
+    const areaId = area.id;
+    if (!areaId) {
       statusEl.textContent = 'area detection failed';
       return;
     }
+    const areaName = area.name?.split(' ').shift() ?? 'unknown area';
+    areaEl.textContent = areaName;
 
-    const { area: stationArea, stations } = await api.stations(area.id);
-    const playable = stations.filter((station) => Boolean(station.id));
-    const areaName = (stationArea.name ?? area.name)?.split(' ').shift() ?? 'unknown area';
+    statusEl.textContent = 'select a station to play';
 
-    stationEl.innerHTML = playable
-      .map((station) => `<option value="${station.id}">${station.name}</option>`)
-      .join('');
+    await renderStations(areaId);
+    const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
+    setTimeout(() => {
+      setInterval(() => {
+        void renderStations(areaId);
+      }, 60_000);
+      void renderStations(areaId);
+    }, nextMinuteDelay);
 
-    statusEl.textContent = `current area: ${areaName}`;
   } catch (error) {
     statusEl.textContent = `init failed: ${String(error)}`;
   }
 };
 
-stationEl.addEventListener('change', async () => {
-  const stationId = stationEl.value;
-  if (!stationId) {
+let currentStationId: string | null = null;
+panelEl.addEventListener('click', async (event) => {
+  const target = (event.target as HTMLElement).closest('button');
+  if (!target) {
+    return;
+  } 
+  const stationId = target?.value;
+  if (stationId === '') {
+    player.stop();
+    statusEl.textContent = 'stopped';
+    currentStationId = null;
+    return;
+  } else if (!stationId) {
     statusEl.textContent = 'station is not selected';
     return;
   }
@@ -303,15 +399,35 @@ stationEl.addEventListener('change', async () => {
   try {
     await player.play(stationId);
     statusEl.textContent = 'now playing';
+    const buttons = panelEl.querySelectorAll('button');
+    buttons.forEach((button) => {
+      button.classList.toggle('playing', button === target);
+    });
+    currentStationId = stationId;
   } catch (error) {
     statusEl.textContent = `playback failed: ${String(error)}`;
   }
 });
 
-stopEl.addEventListener('click', () => {
-  player.stop();
-  stationEl.value = '';
-  statusEl.textContent = 'stopped';
+document.addEventListener('keydown', (event) => {
+  switch (event.key) {
+    case 'ArrowRight': {
+      const buttons = Array.from(panelEl.querySelectorAll('button'));
+      const currentIndex = buttons.findIndex((button) => document.activeElement === button);
+      const nextIndex = (currentIndex + 1) % buttons.length;
+      buttons[nextIndex].click();
+      buttons[nextIndex].focus();
+      break;
+    }
+    case 'ArrowLeft': {
+      const buttons = Array.from(panelEl.querySelectorAll('button'));
+      const currentIndex = buttons.findIndex((button) => document.activeElement === button);
+      const nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+      buttons[nextIndex].click();
+      buttons[nextIndex].focus();
+      break;
+    }
+  }
 });
 
 void init();
