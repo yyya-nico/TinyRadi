@@ -7,7 +7,6 @@ git clone https://github.com/yyya-nico/TinyRadi.git
 cd ./TinyRadi
 npm install
 ```
-```
 
 ### build
 ```
