@@ -1,6 +1,4 @@
 (() => {
-  if (location.pathname !== '/') return;
-
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
 
