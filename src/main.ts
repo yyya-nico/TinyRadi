@@ -334,18 +334,22 @@ const renderStations = async (areaId: string) => {
     .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
       const nowProgram = pickCurrentProgram(data.programs);
       const isPlaying = currentStationId === data.station.id;
+      const title = nowProgram?.title ?? 'no title';
+      const stationName = data.station.name ?? 'unknown station';
+      const pfm = nowProgram?.pfm ?? '';
+      const time = nowProgram?.time?.formatted ?? 'unknown time';
       return `
         <li>
           <button value="${data.station.id}" class="${isPlaying ? 'playing' : ''}">
-            ${data.station.name ?? 'unknown station'}<br />
-            ${nowProgram?.title ?? 'no title'}<br />
-            ${nowProgram?.pfm ?? ''}<br />
-            ${nowProgram?.time?.formatted ?? 'unknown time'}
+            <h2><span title="${title}">${title}</span></h2>
+            <h3><span title="${stationName}">${stationName}</span></h3>
+            <p><span title="${pfm}">${pfm}</span></p>
+            <p class="time"><span title="${time}">${time}</span></p>
           </button>
         </li>`;
     })
     .concat([
-      `<li><button value="" id="stop">Stop</button></li>`,
+      `<li><button value="" id="stop"><h2>Stop</h2></button></li>`,
     ])
     .join('');
   document.querySelector<HTMLButtonElement>('.playing')?.focus();
