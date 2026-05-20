@@ -47,6 +47,14 @@
   };
 
   const replaceBodyWithExtensionApp = async () => {
+    const outerCommentNodes = [];
+
+    for(let node = document.documentElement.previousSibling; node.nodeType === Node.COMMENT_NODE; node = node.previousSibling) {
+      outerCommentNodes.push(node);
+    }
+
+    outerCommentNodes.forEach(node => node.remove());
+
     const extensionPageUrl = chrome.runtime.getURL("index.html");
     const htmlText = await fetch(extensionPageUrl).then((res) => res.text());
 
