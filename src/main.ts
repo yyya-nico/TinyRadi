@@ -427,21 +427,50 @@ panelEl.addEventListener('click', async (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  const move = (moveDirection: string, to: number) => {
+    const buttons = Array.from(panelEl.querySelectorAll('button'));
+    const currentIndex = buttons.findIndex((button) => document.activeElement === button);
+    const nextIndex = (() => {
+      if (moveDirection === 'vertical') {
+        const panelStyles = getComputedStyle(panelEl);
+        const gridRaw = {
+          rows: panelStyles.getPropertyValue("grid-template-rows"),
+          columns: panelStyles.getPropertyValue("grid-template-columns")
+        };
+        const grid = {
+          rows: gridRaw.rows.split(' ').length,
+          columns: gridRaw.columns.split(' ').length
+        };
+        const gridCells = grid.rows * grid.columns;
+        let nextIndex = (currentIndex + to * grid.columns + gridCells) % gridCells;
+        while (nextIndex > buttons.length - 1) {
+          nextIndex = (nextIndex + to * grid.columns + gridCells) % gridCells;
+        }
+        return nextIndex;
+      } else if (moveDirection === 'horizontal') {
+        const nextIndex = (currentIndex + to + buttons.length) % buttons.length;
+        return nextIndex;
+      }
+      return currentIndex;
+    })();
+    buttons[nextIndex].click();
+    buttons[nextIndex].focus();
+  }
   switch (event.key) {
-    case 'ArrowRight': {
-      const buttons = Array.from(panelEl.querySelectorAll('button'));
-      const currentIndex = buttons.findIndex((button) => document.activeElement === button);
-      const nextIndex = (currentIndex + 1) % buttons.length;
-      buttons[nextIndex].click();
-      buttons[nextIndex].focus();
+    case 'ArrowUp': {
+      move('vertical', -1);
+      break;
+    }
+    case 'ArrowDown': {
+      move('vertical', 1);
       break;
     }
     case 'ArrowLeft': {
-      const buttons = Array.from(panelEl.querySelectorAll('button'));
-      const currentIndex = buttons.findIndex((button) => document.activeElement === button);
-      const nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
-      buttons[nextIndex].click();
-      buttons[nextIndex].focus();
+      move('horizontal', -1);
+      break;
+    }
+    case 'ArrowRight': {
+      move('horizontal', 1);
       break;
     }
   }
