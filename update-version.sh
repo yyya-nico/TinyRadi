@@ -39,3 +39,18 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 else
     echo "スキップしました。"
 fi
+
+# ビルドとzipを作成するか確認
+read -p "ビルドしてzipを作成しますか？(y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "ビルド中..."
+    npm run build
+    echo "zip ファイルを作成中..."
+    cd dist
+    zip -r "TinyRadi-v$VERSION.zip" ./* -x "*.DS_Store" "*__MACOSX*"
+    cd ..
+    echo "完了しました！"
+else
+    echo "スキップしました。"
+fi
