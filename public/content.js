@@ -64,6 +64,7 @@
     const appModuleScript = appDoc.querySelector('script[type="module"][src]');
     const moduleScriptPath = appModuleScript?.getAttribute("src");
 
+    appFavicon?.remove();
     appCss.forEach((el) => el.remove());
     appModuleScript?.remove();
 
