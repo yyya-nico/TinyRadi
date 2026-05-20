@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TinyRadi",
-  "version": "0.0.1",
-  "description": "この拡張機能を入れると、 radiko.jp が TinyRadi に置き換わります。",
+  "version": "1.0.0",
+  "description": "radiko.jp の UI を最小限にします。",
   "permissions": ["declarativeNetRequest"],
   "host_permissions": [
     "https://radiko.jp/*"
