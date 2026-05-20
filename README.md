@@ -14,4 +14,4 @@ npm run build
 ```
 
 ## 拡張機能のインストールについて
-build後、「パッケージ化されていない拡張機能を読み込む」でdistディレクトリーを選択してください。
+[Releases内のTinyRadi.zip](https://github.com/yyya-nico/TinyRadi/releases)をダウンロードし、展開後「パッケージ化されていない拡張機能を読み込む」でTinyRadiディレクトリーを選択してください。
