@@ -398,6 +398,9 @@ panelEl.addEventListener('click', async (event) => {
     return;
   } 
   const stationId = target?.value;
+  if (stationId === currentStationId) {
+    return;
+  }
   if (stationId === '') {
     player.stop();
     statusEl.textContent = '停止';
