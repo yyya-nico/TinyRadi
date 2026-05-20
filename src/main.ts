@@ -259,7 +259,6 @@ class Player {
   play = async (stationId: string) => {
     this.stop();
 
-    const authToken = this.authToken ?? (await this.api.authorize()).authToken;
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
 
     if (!Hls.isSupported()) {
@@ -269,7 +268,7 @@ class Player {
     const hls = new Hls({
       xhrSetup: (xhr, url) => {
         if (/playlist.m3u8/.test(url)) {
-          xhr.setRequestHeader('X-Radiko-AuthToken', authToken);
+          xhr.setRequestHeader('X-Radiko-AuthToken', this.authToken);
           xhr.withCredentials = !/(wowza|smartstream\.ne\.jp)/.test(url);
         }
       },
