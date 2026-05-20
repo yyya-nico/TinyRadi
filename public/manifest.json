@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TinyRadi",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "radiko.jp の UI を最小限にします。",
   "permissions": ["declarativeNetRequest"],
   "host_permissions": [
