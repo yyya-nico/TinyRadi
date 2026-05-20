@@ -369,10 +369,13 @@ const renderStations = async (areaId: string) => {
 const init = async () => {
   try {
     if (!area.id) {
-      statusEl.textContent = 'エリアの検出に失敗しました';
+      statusEl.textContent = '現在地の検出に失敗しました';
+      return;
+    } else if (area.id === 'OUT') {
+      statusEl.textContent = 'サービス提供エリア外のためTinyRadiを利用できません';
       return;
     }
-    const areaName = area.name ?? '不明なエリア';
+    const areaName = area.name ?? '不明な現在地';
     areaEl.textContent = areaName;
 
     statusEl.textContent = '局を選択してください';
