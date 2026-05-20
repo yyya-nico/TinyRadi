@@ -235,10 +235,15 @@ class Player {
 
   private hls: Hls | null = null;
 
+  private updateToken = async () => {
+    this.authToken = await this.api.authorize().then((result) => result.authToken);
+  }
+
   constructor(api: API, audio: HTMLAudioElement, authToken = '') {
     this.api = api;
     this.audio = audio;
     this.authToken = authToken;
+    setInterval(this.updateToken, 70 * 60_000);
   }
 
   stop = () => {
