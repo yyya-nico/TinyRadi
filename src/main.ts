@@ -198,8 +198,8 @@ class API {
       throw new Error('auth2 failed');
     }
     const area = await auth2Res.text().then((txt) => {
-      const [id, nameJp, nameEn] = txt.trim().split(',');
-      return { id, nameJp, nameEn };
+      const [id, name, nameEn] = txt.trim().split(',');
+      return { id, name, nameEn };
     });
 
     return { authToken, area };
@@ -316,8 +316,8 @@ if (!statusEl || !areaEl || !panelEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
-const authResult = await api.authorize();
-const player = new Player(api, audioEl, authResult.authToken);
+const { authToken, area } = await api.authorize();
+const player = new Player(api, audioEl, authToken);
 
 const pickCurrentProgram = (programs: Program[]) => {
     const now = Date.now();
@@ -368,24 +368,22 @@ const renderStations = async (areaId: string) => {
 
 const init = async () => {
   try {
-    const area = authResult.area;
-    const areaId = area.id;
-    if (!areaId) {
+    if (!area.id) {
       statusEl.textContent = 'エリアの検出に失敗しました';
       return;
     }
-    const areaName = area.nameJp ?? '不明なエリア';
+    const areaName = area.name ?? '不明なエリア';
     areaEl.textContent = areaName;
 
     statusEl.textContent = '局を選択してください';
 
-    await renderStations(areaId);
+    await renderStations(area.id);
     const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
     setTimeout(() => {
       setInterval(() => {
-        void renderStations(areaId);
+        void renderStations(area.id);
       }, 60_000);
-      void renderStations(areaId);
+      void renderStations(area.id);
     }, nextMinuteDelay);
 
   } catch (error) {
