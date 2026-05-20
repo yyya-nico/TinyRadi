@@ -202,7 +202,7 @@ class API {
       return { id, nameJp, nameEn };
     });
 
-    return { authToken, area};
+    return { authToken, area };
   };
 
   stationStreamUrl = async (stationId: string, areafree = false) => {
