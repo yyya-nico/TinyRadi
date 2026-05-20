@@ -3,7 +3,10 @@
   "name": "TinyRadi",
   "version": "1.0.2",
   "description": "radiko.jp の UI を最小限にします。",
-  "permissions": ["declarativeNetRequest"],
+  "permissions": ["declarativeNetRequest", "storage"],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "host_permissions": [
     "https://radiko.jp/*"
   ],

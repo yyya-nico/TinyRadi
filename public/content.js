@@ -1,6 +1,14 @@
 (() => {
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
+  const STORAGE_KEY = "tinyradiEnabled";
+
+  const getEnabled = () =>
+    new Promise((resolve) => {
+      chrome.storage.local.get({ [STORAGE_KEY]: true }, (result) => {
+        resolve(result[STORAGE_KEY] !== false);
+      });
+    });
 
   const toExtensionUrl = (path) => {
     if (!path) return null;
@@ -83,7 +91,14 @@
     injectModuleScript(moduleScriptPath);
   };
 
-  replaceBodyWithExtensionApp().catch((error) => {
-    console.error("[TinyRadi] Failed to replace body:", error);
-  });
+  getEnabled()
+    .then((enabled) => {
+      if (!enabled) {
+        return;
+      }
+      return replaceBodyWithExtensionApp();
+    })
+    .catch((error) => {
+      console.error("[TinyRadi] Failed to replace body:", error);
+    });
 })();
