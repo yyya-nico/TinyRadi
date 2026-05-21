@@ -19,14 +19,14 @@ sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" package.json
 echo "manifest.json を更新中..."
 sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" public/manifest.json
 
-# git tagを作成
-echo "git tag を作成中..."
-git tag "v$VERSION"
-
 # git add と commit
 echo "ファイルをコミット中..."
 git add package.json public/manifest.json
 git commit -m "Update version to $VERSION"
+
+# git tagを作成
+echo "git tag を作成中..."
+git tag "v$VERSION"
 
 # push するか確認
 read -p "git push と git push origin v$VERSION を実行しますか？(y/n) " -n 1 -r
