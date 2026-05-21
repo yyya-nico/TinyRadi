@@ -345,7 +345,7 @@ const renderStations = async (areaId: string) => {
       const time = nowProgram?.time?.formatted ?? 'unknown time';
       return `
         <li>
-          <button value="${data.station.id}" class="${isPlaying ? 'playing' : ''}">
+          <button value="${data.station.id}" data-station-name="${stationName}" class="${isPlaying ? 'playing' : ''}">
             <h2>
               <div class="title" title="${title}">
                 <span>${title}</span>
@@ -421,7 +421,7 @@ panelEl.addEventListener('click', async (event) => {
   statusEl.textContent = `開始しています...`;
   try {
     await player.play(stationId);
-    statusEl.textContent = '再生中';
+    statusEl.textContent = `再生中: ${target.dataset.stationName}`;
     const buttons = panelEl.querySelectorAll('button');
     buttons.forEach((button) => {
       button.classList.toggle('playing', button === target);
