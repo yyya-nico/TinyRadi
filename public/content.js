@@ -16,10 +16,6 @@
     return;
   }
 
-  window.addEventListener('hashchange', () => {
-    location.reload();
-  });
-
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
   const STORAGE_KEY = "tinyradiEnabled";
