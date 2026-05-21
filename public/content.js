@@ -74,7 +74,7 @@
   const replaceBodyWithExtensionApp = async () => {
     const outerCommentNodes = [];
 
-    for (let node = document.documentElement.previousSibling; node.nodeType === Node.COMMENT_NODE; node = node.previousSibling) {
+    for (let node = document.documentElement.previousSibling; node && node.nodeType === Node.COMMENT_NODE; node = node.previousSibling) {
       outerCommentNodes.push(node);
     }
 
