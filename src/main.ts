@@ -306,9 +306,9 @@ app.innerHTML = `
     <audio id="audio"></audio>
     <hr>
     <ul class="links">
-      <li><a href="https://radiko.jp/#!/timeshift" target="_blank">タイムフリー</a></li>
-      <li><a href="https://radiko.jp/#!/areafree" target="_blank">エリアフリー</a></li>
-      <li><a href="https://radiko.jp/#!/timetable" target="_blank">番組表</a></li>
+      <li><a href="https://radiko.jp/#!/timeshift" target="radiko">タイムフリー</a></li>
+      <li><a href="https://radiko.jp/#!/areafree" target="radiko">エリアフリー</a></li>
+      <li><a href="https://radiko.jp/#!/timetable" target="radiko">番組表</a></li>
     </ul>
   </main>
 `;
