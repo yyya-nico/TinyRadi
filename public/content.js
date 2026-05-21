@@ -1,4 +1,25 @@
 (() => {
+  const isDirectRadikoTop = location.hash === '#!/top';
+  if (isDirectRadikoTop) {
+    location.replace('/');
+    return;
+  }
+
+  const isSomeRadikoPage = location.hash !== '';
+  if (isSomeRadikoPage) {
+    window.addEventListener('hashchange', () => {
+      const isTop = location.hash === '' || location.hash === '#!/top';
+      if (isTop) {
+        location.replace('/');
+      }
+    });
+    return;
+  }
+
+  window.addEventListener('hashchange', () => {
+    location.reload();
+  });
+
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
   const STORAGE_KEY = "tinyradiEnabled";

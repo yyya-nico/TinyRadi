@@ -304,6 +304,12 @@ app.innerHTML = `
     <p id="status">読み込み中...</p>
     <ul id="panel"></ul>
     <audio id="audio"></audio>
+    <hr>
+    <ul class="links">
+      <li><a href="https://radiko.jp/#!/timeshift">タイムフリー</a></li>
+      <li><a href="https://radiko.jp/#!/areafree">エリアフリー</a></li>
+      <li><a href="https://radiko.jp/#!/timetable">番組表</a></li>
+    </ul>
   </main>
 `;
 
