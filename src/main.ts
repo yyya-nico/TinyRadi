@@ -440,6 +440,9 @@ panelEl.addEventListener('click', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   const move = (moveDirection: string, to: number) => {
+    if (event.repeat) {
+      return;
+    }
     const buttons = Array.from(panelEl.querySelectorAll('button'));
     const currentIndex = buttons.findIndex((button) => document.activeElement === button);
     const nextIndex = (() => {
