@@ -66,6 +66,14 @@
       });
       return true;
     }
+
+    if (window.name === 'radiko') { // Window opened from TinyRadi's radiko links and returned to TinyRadi
+      window.name = '';
+    }
+
+    window.addEventListener('hashchange', () => { // When returning to the radiko page from TinyRadi using the back button
+      location.reload();
+    });
   };
 
   const toExtensionUrl = (path) => {
