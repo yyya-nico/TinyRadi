@@ -1,14 +1,49 @@
 (() => {
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
-  const STORAGE_KEY = "tinyradiEnabled";
+  const STORAGE_KEY_ENABLED = "tinyradiEnabled";
+  const STORAGE_KEY_HIDE_FOOTER = "tinyradiHideFooter";
+  const ROOT_HIDE_FOOTER_DATASET = "hideFooter";
 
-  const getEnabled = () =>
+  const getSettings = () =>
     new Promise((resolve) => {
-      chrome.storage.local.get({ [STORAGE_KEY]: true }, (result) => {
-        resolve(result[STORAGE_KEY] !== false);
-      });
+      chrome.storage.local.get(
+        {
+          [STORAGE_KEY_ENABLED]: true,
+          [STORAGE_KEY_HIDE_FOOTER]: false,
+        },
+        (result) => {
+          resolve({
+            enabled: result[STORAGE_KEY_ENABLED] !== false,
+            hideFooter: result[STORAGE_KEY_HIDE_FOOTER] === true,
+          });
+        }
+      );
     });
+
+  const applyHideFooter = (hideFooter) => {
+    if (!document.documentElement) {
+      return;
+    }
+    if (hideFooter) {
+      document.documentElement.dataset[ROOT_HIDE_FOOTER_DATASET] = "1";
+      return;
+    }
+    delete document.documentElement.dataset[ROOT_HIDE_FOOTER_DATASET];
+  };
+
+  const watchHideFooter = () => {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local") {
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(changes, STORAGE_KEY_HIDE_FOOTER)) {
+        return;
+      }
+      const nextValue = changes[STORAGE_KEY_HIDE_FOOTER]?.newValue === true;
+      applyHideFooter(nextValue);
+    });
+  };
 
   const routing = () => {
     const isDirectRadikoTop = location.hash === '#!/top';
@@ -114,15 +149,18 @@
     injectModuleScript(moduleScriptPath);
   };
 
-  getEnabled()
-    .then((enabled) => {
-      if (!enabled) {
+  getSettings()
+    .then((settings) => {
+      if (!settings.enabled) {
         return;
       }
       if (routing()) {
         return;
       }
-      return replaceBodyWithExtensionApp();
+      return replaceBodyWithExtensionApp().then(() => {
+        applyHideFooter(settings.hideFooter);
+        watchHideFooter();
+      });
     })
     .catch((error) => {
       console.error("[TinyRadi] Failed to replace body:", error);

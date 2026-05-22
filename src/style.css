@@ -85,3 +85,7 @@ footer {
     padding-inline-start: 0;
     list-style: none;
 }
+
+:root[data-hide-footer="1"] footer {
+    display: none;
+}

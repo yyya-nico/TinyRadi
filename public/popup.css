@@ -30,6 +30,10 @@ body {
   font-size: 14px;
 }
 
+.toggle + .toggle {
+  margin-top: 8px;
+}
+
 .toggle input {
   width: 16px;
   height: 16px;
