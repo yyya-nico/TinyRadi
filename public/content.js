@@ -2,46 +2,46 @@
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
   const STORAGE_KEY_ENABLED = "tinyradiEnabled";
-  const STORAGE_KEY_HIDE_FOOTER = "tinyradiHideFooter";
-  const ROOT_HIDE_FOOTER_DATASET = "hideFooter";
+  const STORAGE_KEY_SHOW_FOOTER = "tinyradiShowFooter";
+  const ROOT_SHOW_FOOTER_DATASET = "showFooter";
 
   const getSettings = () =>
     new Promise((resolve) => {
       chrome.storage.local.get(
         {
           [STORAGE_KEY_ENABLED]: true,
-          [STORAGE_KEY_HIDE_FOOTER]: false,
+          [STORAGE_KEY_SHOW_FOOTER]: true,
         },
         (result) => {
           resolve({
             enabled: result[STORAGE_KEY_ENABLED] !== false,
-            hideFooter: result[STORAGE_KEY_HIDE_FOOTER] === true,
+            showFooter: result[STORAGE_KEY_SHOW_FOOTER] !== false,
           });
         }
       );
     });
 
-  const applyHideFooter = (hideFooter) => {
+  const applyShowFooter = (showFooter) => {
     if (!document.documentElement) {
       return;
     }
-    if (hideFooter) {
-      document.documentElement.dataset[ROOT_HIDE_FOOTER_DATASET] = "1";
+    if (showFooter) {
+      document.documentElement.dataset[ROOT_SHOW_FOOTER_DATASET] = "1";
       return;
     }
-    delete document.documentElement.dataset[ROOT_HIDE_FOOTER_DATASET];
+    document.documentElement.dataset[ROOT_SHOW_FOOTER_DATASET] = "0";
   };
 
-  const watchHideFooter = () => {
+  const watchShowFooter = () => {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local") {
         return;
       }
-      if (!Object.prototype.hasOwnProperty.call(changes, STORAGE_KEY_HIDE_FOOTER)) {
+      if (!Object.prototype.hasOwnProperty.call(changes, STORAGE_KEY_SHOW_FOOTER)) {
         return;
       }
-      const nextValue = changes[STORAGE_KEY_HIDE_FOOTER]?.newValue === true;
-      applyHideFooter(nextValue);
+      const nextValue = changes[STORAGE_KEY_SHOW_FOOTER]?.newValue !== false;
+      applyShowFooter(nextValue);
     });
   };
 
@@ -158,8 +158,8 @@
         return;
       }
       return replaceBodyWithExtensionApp().then(() => {
-        applyHideFooter(settings.hideFooter);
-        watchHideFooter();
+        applyShowFooter(settings.showFooter);
+        watchShowFooter();
       });
     })
     .catch((error) => {

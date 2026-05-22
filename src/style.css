@@ -105,6 +105,6 @@ footer {
     list-style: none;
 }
 
-:root[data-hide-footer="1"] footer {
+:root[data-show-footer="0"] footer {
     display: none;
 }

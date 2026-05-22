@@ -1,15 +1,15 @@
 (() => {
   const STORAGE_KEY_ENABLED = "tinyradiEnabled";
-  const STORAGE_KEY_HIDE_FOOTER = "tinyradiHideFooter";
+  const STORAGE_KEY_SHOW_FOOTER = "tinyradiShowFooter";
   const RULESET_ID = "ruleset";
 
   const enabledCheckbox = document.getElementById("enabled-toggle");
-  const hideFooterCheckbox = document.getElementById("hide-footer-toggle");
+  const showFooterCheckbox = document.getElementById("show-footer-toggle");
   const status = document.getElementById("status");
 
   if (
     !(enabledCheckbox instanceof HTMLInputElement) ||
-    !(hideFooterCheckbox instanceof HTMLInputElement) ||
+    !(showFooterCheckbox instanceof HTMLInputElement) ||
     !(status instanceof HTMLElement)
   ) {
     return;
@@ -24,12 +24,12 @@
       chrome.storage.local.get(
         {
           [STORAGE_KEY_ENABLED]: true,
-          [STORAGE_KEY_HIDE_FOOTER]: false,
+          [STORAGE_KEY_SHOW_FOOTER]: true,
         },
         (result) => {
           resolve({
             enabled: result[STORAGE_KEY_ENABLED] !== false,
-            hideFooter: result[STORAGE_KEY_HIDE_FOOTER] === true,
+            showFooter: result[STORAGE_KEY_SHOW_FOOTER] !== false,
           });
         }
       );
@@ -42,9 +42,9 @@
       });
     });
 
-  const setHideFooter = (hideFooter) =>
+  const setShowFooter = (showFooter) =>
     new Promise((resolve) => {
-      chrome.storage.local.set({ [STORAGE_KEY_HIDE_FOOTER]: hideFooter }, () => {
+      chrome.storage.local.set({ [STORAGE_KEY_SHOW_FOOTER]: showFooter }, () => {
         resolve();
       });
     });
@@ -70,8 +70,8 @@
     try {
       const settings = await getSettings();
       enabledCheckbox.checked = settings.enabled;
-      hideFooterCheckbox.checked = settings.hideFooter;
-      hideFooterCheckbox.disabled = !settings.enabled;
+      showFooterCheckbox.checked = settings.showFooter;
+      showFooterCheckbox.disabled = !settings.enabled;
       setStatus(settings.enabled ? "現在: 有効" : "現在: 無効");
     } catch (error) {
       setStatus("状態の読み込みに失敗しました");
@@ -82,16 +82,16 @@
   enabledCheckbox.addEventListener("change", async () => {
     const enabled = enabledCheckbox.checked;
     enabledCheckbox.disabled = true;
-    hideFooterCheckbox.disabled = true;
+    showFooterCheckbox.disabled = true;
 
     try {
       await setEnabled(enabled);
       await syncRuleset(enabled);
       setStatus(enabled ? "現在: 有効" : "現在: 無効");
-      hideFooterCheckbox.disabled = !enabled;
+      showFooterCheckbox.disabled = !enabled;
     } catch (error) {
       enabledCheckbox.checked = !enabled;
-      hideFooterCheckbox.disabled = !enabledCheckbox.checked;
+      showFooterCheckbox.disabled = !enabledCheckbox.checked;
       setStatus("切り替えに失敗しました");
       console.error("[TinyRadi] Failed to toggle enabled state:", error);
     } finally {
@@ -99,18 +99,18 @@
     }
   });
 
-  hideFooterCheckbox.addEventListener("change", async () => {
-    const hideFooter = hideFooterCheckbox.checked;
-    hideFooterCheckbox.disabled = true;
+  showFooterCheckbox.addEventListener("change", async () => {
+    const showFooter = showFooterCheckbox.checked;
+    showFooterCheckbox.disabled = true;
 
     try {
-      await setHideFooter(hideFooter);
+      await setShowFooter(showFooter);
     } catch (error) {
-      hideFooterCheckbox.checked = !hideFooter;
+      showFooterCheckbox.checked = !showFooter;
       setStatus("下部表示設定の保存に失敗しました");
       console.error("[TinyRadi] Failed to toggle footer visibility:", error);
     } finally {
-      hideFooterCheckbox.disabled = !enabledCheckbox.checked;
+      showFooterCheckbox.disabled = !enabledCheckbox.checked;
     }
   });
 
