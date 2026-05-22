@@ -1,21 +1,4 @@
 (() => {
-  const isDirectRadikoTop = location.hash === '#!/top';
-  if (isDirectRadikoTop) {
-    location.replace('/');
-    return;
-  }
-
-  const isSomeRadikoPage = location.hash !== '';
-  if (isSomeRadikoPage) {
-    window.addEventListener('hashchange', () => {
-      const isTop = location.hash === '' || location.hash === '#!/top';
-      if (isTop) {
-        location.replace('/');
-      }
-    });
-    return;
-  }
-
   const MARK_STYLE = "data-tinyradi-style";
   const MARK_SCRIPT = "data-tinyradi-script";
   const STORAGE_KEY = "tinyradiEnabled";
@@ -26,6 +9,25 @@
         resolve(result[STORAGE_KEY] !== false);
       });
     });
+
+  const routing = () => {
+    const isDirectRadikoTop = location.hash === '#!/top';
+    if (isDirectRadikoTop) {
+      location.replace('/');
+      return true;
+    }
+  
+    const isSomeRadikoPage = location.hash !== '';
+    if (isSomeRadikoPage) {
+      window.addEventListener('hashchange', () => {
+        const isTop = location.hash === '' || location.hash === '#!/top';
+        if (isTop) {
+          location.replace('/');
+        }
+      });
+      return true;
+    }
+  };
 
   const toExtensionUrl = (path) => {
     if (!path) return null;
@@ -111,6 +113,9 @@
   getEnabled()
     .then((enabled) => {
       if (!enabled) {
+        return;
+      }
+      if (routing()) {
         return;
       }
       return replaceBodyWithExtensionApp();
