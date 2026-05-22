@@ -251,9 +251,6 @@ class Player {
       this.hls.destroy();
       this.hls = null;
     }
-    this.audio.pause();
-    this.audio.removeAttribute('src');
-    this.audio.load();
   };
 
   play = async (stationId: string) => {
@@ -283,9 +280,6 @@ class Player {
     hls.on(Hls.Events.MEDIA_ATTACHED, () => {
       hls.loadSource(streamUrl);
     });
-    this.audio.addEventListener('canplay', () => {
-      this.audio.play();
-    }, { once: true });
   };
 
 }
@@ -303,7 +297,7 @@ app.innerHTML = `
     <p id="area"></p>
     <p id="status">読み込み中...</p>
     <ul id="panel"></ul>
-    <audio id="audio"></audio>
+    <audio id="audio" autoplay></audio>
     </footer>
   </main>
   <footer>
