@@ -22,6 +22,10 @@
       window.addEventListener('hashchange', () => {
         const isTop = location.hash === '' || location.hash === '#!/top';
         if (isTop) {
+          if (window.opener) {
+            window.close();
+            return;
+          }
           location.replace('/');
         }
       });
