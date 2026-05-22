@@ -1,3 +1,10 @@
+main {
+    background-color: #ffffff;
+    @media (prefers-color-scheme: dark) {
+        background-color: #121212;
+    }
+}
+
 #panel {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -64,9 +71,17 @@
     }
 }
 
+footer {
+    display: flex;
+    gap: 12px;
+    position: fixed;
+    z-index: -1;
+    bottom: 0;
+}
+
 .links {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     padding-inline-start: 0;
     list-style: none;
 }
