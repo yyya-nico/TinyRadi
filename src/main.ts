@@ -283,9 +283,9 @@ class Player {
     hls.on(Hls.Events.MEDIA_ATTACHED, () => {
       hls.loadSource(streamUrl);
     });
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      void this.audio.play();
-    });
+    this.audio.addEventListener('canplay', () => {
+      this.audio.play();
+    }, { once: true });
   };
 
 }
