@@ -1,7 +1,8 @@
-main {
-    background-color: #ffffff;
-    @media (prefers-color-scheme: dark) {
-        background-color: #121212;
+#app {
+    margin-block-end: 50px;
+
+    @media (width < 400px) {
+        margin-block-end: 70px;
     }
 }
 
@@ -73,15 +74,33 @@ main {
 
 footer {
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 4px 12px;
     position: fixed;
-    z-index: -1;
+    right: 0;
     bottom: 0;
+    left: 0;
+    border-block-start: 1px solid #ccc;
+    padding: 8px;
+    background-color: #ffffff;
+
+    @media (prefers-color-scheme: dark) {
+        background-color: #121212;
+    }
+
+    > * {
+        margin: 0;
+    }
+
+    @media (width < 768px) {
+        font-size: 0.8em;
+    }
 }
 
 .links {
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 4px 12px;
     padding-inline-start: 0;
     list-style: none;
 }
