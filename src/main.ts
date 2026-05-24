@@ -326,15 +326,10 @@ app.innerHTML = `
     <p id="area"></p>
     <p id="status">読み込み中...</p>
     <ul id="panel"></ul>
-    <button id="open-details">番組詳細</button>
+    <button id="open-details" hidden>番組詳細</button>
     <dialog id="dialog">
       <div id="details"></div>
-      <div class="dialog-buttons">
-        <button id="details-prev">前の番組</button>
-        <button id="details-next">次の番組</button>
-        <button id="details-play">再生</button>
-        <button id="close-details">閉じる</button>
-      </div>
+      <button id="close-details">閉じる</button>
     </dialog>
     <audio id="audio" autoplay></audio>
     </footer>
@@ -355,14 +350,10 @@ const panelEl = document.querySelector<HTMLUListElement>('#panel');
 const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
 const dialogEl = document.querySelector<HTMLDialogElement>('#dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
-const detailsPrevEl = document.querySelector<HTMLButtonElement>('#details-prev');
-const detailsNextEl = document.querySelector<HTMLButtonElement>('#details-next');
-const detailsPlayEl = document.querySelector<HTMLButtonElement>('#details-play');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!statusEl || !areaEl || !panelEl || !openDetailsEl || !dialogEl || !detailsEl
-  || !detailsPrevEl || !detailsNextEl || !detailsPlayEl || !closeDetailsEl || !audioEl) {
+if (!statusEl || !areaEl || !panelEl || !openDetailsEl || !dialogEl || !detailsEl|| !closeDetailsEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -417,13 +408,16 @@ const renderStations = async (areaId: string) => {
   document.querySelector<HTMLButtonElement>('.playing')?.focus();
 };
 
-let detailsIndex = 0;
 const renderProgramDetails = (clear = false) => {
   if (clear) {
     detailsEl.textContent = '';
     return;
   }
-  const station = nowPrograms[detailsIndex];
+  const station = nowPrograms.find((data) => data.station.id === player.stationId);
+  if (!station) {
+    detailsEl.textContent = '';
+    return;
+  }
   const program = station ? pickCurrentProgram(station.programs) : null;
   if (!program) {
     detailsEl.textContent = '';
@@ -442,8 +436,6 @@ const renderProgramDetails = (clear = false) => {
   detailsEl.querySelectorAll('a').forEach((a) => {
     a.target = '_blank';
   });
-  const isPlaying = player.stationId === station.station.id && !player.paused;
-  detailsPlayEl.hidden = !station.station.id || isPlaying;
 };
 
 const init = async () => {
@@ -487,6 +479,7 @@ const init = async () => {
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
+      openDetailsEl.hidden = false;
     });
     player.listenEvent('pause', () => {
       const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
@@ -502,6 +495,7 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
+      openDetailsEl.hidden = true;
     });
 
   } catch (error) {
@@ -539,31 +533,9 @@ panelEl.addEventListener('click', async (event) => {
 });
 
 openDetailsEl.addEventListener('click', () => {
-  if (player.stationId) {
-    detailsIndex = nowPrograms.findIndex((data) => data.station.id === player.stationId);
-  }
   renderProgramDetails();
   dialogEl.showModal();
-});
-
-detailsPrevEl.addEventListener('click', () => {
-  detailsIndex = (detailsIndex - 1 + nowPrograms.length) % nowPrograms.length;
-  renderProgramDetails();
-});
-
-detailsNextEl.addEventListener('click', () => {
-  detailsIndex = (detailsIndex + 1) % nowPrograms.length;
-  renderProgramDetails();
-});
-
-detailsPlayEl.addEventListener('click', async () => {
-  const stationId = nowPrograms[detailsIndex].station.id;
-  const isPlaying = player.stationId === stationId && !player.paused;
-  if (!stationId || isPlaying) {
-    return;
-  }
-  await play(stationId);
-  dialogEl.close();
+  dialogEl.scrollTop = 0;
 });
 
 closeDetailsEl.addEventListener('click', () => {

@@ -73,24 +73,7 @@
 }
 
 #dialog {
-    padding: 0;
-    max-width: calc(480px + 2em);
-
-     > * {
-        padding: 1em;
-        box-sizing: border-box;
-     }
-}
-
-.dialog-buttons {
-    position: sticky;
-    bottom: 0;
-    border-block-start: 1px solid #ccc;
-    background-color: #ffffff;
-
-    @media (prefers-color-scheme: dark) {
-        background-color: #121212;
-    }
+    max-width: 480px;
 }
 
 footer {
