@@ -328,8 +328,8 @@ app.innerHTML = `
     <ul id="panel"></ul>
     <button id="open-details" hidden>番組詳細</button>
     <dialog id="dialog">
-      <div id="details"></div>
       <button id="close-details">閉じる</button>
+      <div id="details"></div>
     </dialog>
     <audio id="audio" autoplay></audio>
     </footer>
@@ -408,19 +408,25 @@ const renderStations = async (areaId: string) => {
   document.querySelector<HTMLButtonElement>('.playing')?.focus();
 };
 
-const renderProgramDetails = (clear = false) => {
-  if (clear) {
+const renderProgramDetails = () => {
+  const clearDetails = () => {
     detailsEl.textContent = '';
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = null;
+    }
+  };
+  if (player.stationId === null) {
+    clearDetails();
     return;
   }
   const station = nowPrograms.find((data) => data.station.id === player.stationId);
   if (!station) {
-    detailsEl.textContent = '';
+    clearDetails();
     return;
   }
   const program = station ? pickCurrentProgram(station.programs) : null;
   if (!program) {
-    detailsEl.textContent = '';
+    clearDetails();
     return;
   }
   const time = program.time?.formatted ?? '不明な時間';
@@ -436,6 +442,15 @@ const renderProgramDetails = (clear = false) => {
   detailsEl.querySelectorAll('a').forEach((a) => {
     a.target = '_blank';
   });
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: program.title ?? '',
+      artist: station.station.name ?? '',
+      artwork: [
+        { src: program.img ?? '', sizes: '480x300', type: 'image/png' },
+      ],
+    });
+  }
 };
 
 const init = async () => {
@@ -513,11 +528,13 @@ const play = async (stationId: string) => {
   player.stop();
   const isStopButton = stationId === '';
   if (isStopButton) {
+    renderProgramDetails();
     return;
   }
 
   try {
     await player.play(stationId);
+    renderProgramDetails();
   } catch (error) {
     statusEl.textContent = `再生に失敗しました: ${String(error)}`;
   }
@@ -533,7 +550,6 @@ panelEl.addEventListener('click', async (event) => {
 });
 
 openDetailsEl.addEventListener('click', () => {
-  renderProgramDetails();
   dialogEl.showModal();
   dialogEl.scrollTop = 0;
 });
