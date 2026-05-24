@@ -326,7 +326,7 @@ app.innerHTML = `
     <p id="area"></p>
     <p id="status">読み込み中...</p>
     <ul id="panel"></ul>
-    <button id="open-details" hidden>番組詳細</button>
+    <button id="open-details" disabled>番組詳細</button>
     <dialog id="dialog">
       <button id="close-details">閉じる</button>
       <div id="details"></div>
@@ -494,7 +494,7 @@ const init = async () => {
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
-      openDetailsEl.hidden = false;
+      openDetailsEl.disabled = false;
     });
     player.listenEvent('pause', () => {
       const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
@@ -510,7 +510,7 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
-      openDetailsEl.hidden = true;
+      openDetailsEl.disabled = true;
     });
 
   } catch (error) {
