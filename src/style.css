@@ -6,6 +6,10 @@
     }
 }
 
+img {
+    max-width: 100%;
+}
+
 #panel {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
