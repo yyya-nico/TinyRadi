@@ -235,9 +235,7 @@ class Player {
 
   private hls: Hls | null = null;
 
-  private updateToken = async () => {
-    this.authToken = await this.api.authorize().then((result) => result.authToken);
-  }
+  stationId: string | null = null;
 
   constructor(api: API, audio: HTMLAudioElement, authToken = '') {
     this.api = api;
@@ -246,15 +244,29 @@ class Player {
     setInterval(this.updateToken, 70 * 60_000);
   }
 
+  private updateToken = async () => {
+    this.authToken = await this.api.authorize().then((result) => result.authToken);
+  }
+
+  listenEvent = (event: string, handler: () => void) => {
+    this.audio.addEventListener(event, handler);
+  };
+
+  get paused() {
+    return this.audio.paused;
+  }
+
   stop = () => {
+    this.audio.dispatchEvent(new Event('stop'));
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;
     }
+    this.stationId = null;
   };
 
   play = async (stationId: string) => {
-    this.stop();
+    this.stationId = stationId;
 
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
 
@@ -341,7 +353,7 @@ const renderStations = async (areaId: string) => {
   panelEl.innerHTML = nowPrograms
     .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
       const nowProgram = pickCurrentProgram(data.programs);
-      const isPlaying = currentStationId === data.station.id;
+      const isPlaying = player.stationId === data.station.id && !player.paused;
       const title = nowProgram?.title ?? 'no title';
       const stationName = data.station.name ?? 'unknown station';
       const pfm = nowProgram?.pfm ?? '';
@@ -392,44 +404,57 @@ const init = async () => {
       void renderStations(area.id);
     }, nextMinuteDelay);
 
+    player.listenEvent('play', () => {
+      const stationId = player.stationId;
+      const buttons = panelEl.querySelectorAll('button');
+      const targetButton = Array.from(buttons).find((button) => button.value === stationId);
+      const stationName = targetButton?.dataset.stationName;
+      statusEl.textContent = stationName ? `再生中: ${stationName}` : '再生中';
+      buttons.forEach((button) => {
+        button.classList.toggle('playing', button === targetButton);
+      });
+    });
+    player.listenEvent('pause', () => {
+      const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
+      const stationName = button?.dataset.stationName;
+      statusEl.textContent = stationName ? `一時停止: ${stationName}` : '一時停止';
+      if (button) {
+        button.classList.remove('playing');
+      }
+    });
+    player.listenEvent('stop', () => {
+      statusEl.textContent = '停止';
+      const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
+      if (button) {
+        button.classList.remove('playing');
+      }
+    });
+
   } catch (error) {
     statusEl.textContent = `初期化に失敗しました: ${String(error)}`;
   }
 };
 
-let currentStationId: string | null = null;
 panelEl.addEventListener('click', async (event) => {
   const target = (event.target as HTMLElement).closest('button');
   if (!target) {
     return;
   } 
-  const stationId = target?.value;
-  if (stationId === currentStationId) {
+  const stationId = target.value;
+  const alreadyPlaying = player.stationId === stationId && !player.paused;
+  if (alreadyPlaying) {
     return;
   }
-  if (stationId === '') {
-    player.stop();
-    statusEl.textContent = '停止';
-    const button = panelEl.querySelector('button.playing');
-    if (button) {
-      button.classList.remove('playing');
-    }
-    currentStationId = null;
-    return;
-  } else if (!stationId) {
-    statusEl.textContent = '局が選択されていません';
+  player.stop();
+  const isStopButton = target.value === '';
+  if (isStopButton) {
     return;
   }
 
   statusEl.textContent = `開始しています...`;
+  target.classList.add('playing');
   try {
     await player.play(stationId);
-    statusEl.textContent = `再生中: ${target.dataset.stationName}`;
-    const buttons = panelEl.querySelectorAll('button');
-    buttons.forEach((button) => {
-      button.classList.toggle('playing', button === target);
-    });
-    currentStationId = stationId;
   } catch (error) {
     statusEl.textContent = `再生に失敗しました: ${String(error)}`;
   }
