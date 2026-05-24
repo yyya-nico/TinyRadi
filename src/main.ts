@@ -265,7 +265,16 @@ class Player {
     this.stationId = null;
   };
 
-  play = async (stationId: string) => {
+  pause = () => {
+    this.audio.pause();
+  };
+
+  play = async (stationId?: string) => {
+    const isResume = !stationId;
+    if (isResume) {
+      this.audio.play();
+      return;
+    }
     this.stationId = stationId;
 
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
@@ -441,8 +450,13 @@ panelEl.addEventListener('click', async (event) => {
     return;
   } 
   const stationId = target.value;
-  const alreadyPlaying = player.stationId === stationId && !player.paused;
+  const alreadyPlaying = player.stationId === stationId;
   if (alreadyPlaying) {
+    if (player.paused) {
+      player.play();
+    } else {
+      player.pause();
+    }
     return;
   }
   player.stop();
