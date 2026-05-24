@@ -558,6 +558,25 @@ closeDetailsEl.addEventListener('click', () => {
   dialogEl.close();
 });
 
+if ('mediaSession' in navigator) {
+  const trackBy = (offset: number) => {
+    const currentIndex = nowPrograms.findIndex((data) => data.station.id === player.stationId);
+    const nextIndex = (currentIndex + offset + nowPrograms.length) % nowPrograms.length;
+    const stationId = nowPrograms[nextIndex].station.id ?? '';
+    const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
+    if (button) {
+      button.focus();
+    }
+    play(stationId);
+  };
+  navigator.mediaSession.setActionHandler('nexttrack', () => {
+    trackBy(1);
+  });
+  navigator.mediaSession.setActionHandler('previoustrack', () => {
+    trackBy(-1);
+  });
+}
+
 document.addEventListener('keydown', (event) => {
   const move = (moveDirection: string, to: number) => {
     if (event.repeat) {
