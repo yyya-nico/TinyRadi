@@ -303,6 +303,14 @@ class Player {
     });
   };
 
+  togglePlay = () => {
+    if (this.audio.paused) {
+      this.audio.play();
+    } else {
+      this.audio.pause();
+    }
+  };
+
 }
 
 const api = new API();
@@ -318,6 +326,16 @@ app.innerHTML = `
     <p id="area"></p>
     <p id="status">読み込み中...</p>
     <ul id="panel"></ul>
+    <button id="open-details">番組詳細</button>
+    <dialog id="dialog">
+      <div id="details"></div>
+      <div class="dialog-buttons">
+        <button id="details-prev">前の番組</button>
+        <button id="details-next">次の番組</button>
+        <button id="details-play">再生</button>
+        <button id="close-details">閉じる</button>
+      </div>
+    </dialog>
     <audio id="audio" autoplay></audio>
     </footer>
   </main>
@@ -334,9 +352,17 @@ app.innerHTML = `
 const statusEl = document.querySelector<HTMLParagraphElement>('#status');
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
 const panelEl = document.querySelector<HTMLUListElement>('#panel');
+const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
+const dialogEl = document.querySelector<HTMLDialogElement>('#dialog');
+const detailsEl = document.querySelector<HTMLDivElement>('#details');
+const detailsPrevEl = document.querySelector<HTMLButtonElement>('#details-prev');
+const detailsNextEl = document.querySelector<HTMLButtonElement>('#details-next');
+const detailsPlayEl = document.querySelector<HTMLButtonElement>('#details-play');
+const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!statusEl || !areaEl || !panelEl || !audioEl) {
+if (!statusEl || !areaEl || !panelEl || !openDetailsEl || !dialogEl || !detailsEl
+  || !detailsPrevEl || !detailsNextEl || !detailsPlayEl || !closeDetailsEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -356,17 +382,18 @@ const pickCurrentProgram = (programs: Program[]) => {
     return programs.length > 0 ? programs[programs.length - 1] : null;
 };
 
+let nowPrograms: { station: { id: string | null; name: string | null }; programs: Program[] }[] = [];
 const renderStations = async (areaId: string) => {
-  const nowPrograms = await api.nowPrograms(areaId);
+  nowPrograms = await api.nowPrograms(areaId);
 
   panelEl.innerHTML = nowPrograms
     .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
       const nowProgram = pickCurrentProgram(data.programs);
       const isPlaying = player.stationId === data.station.id && !player.paused;
-      const title = nowProgram?.title ?? 'no title';
-      const stationName = data.station.name ?? 'unknown station';
+      const title = nowProgram?.title ?? 'タイトルなし';
+      const stationName = data.station.name ?? '不明な放送局';
       const pfm = nowProgram?.pfm ?? '';
-      const time = nowProgram?.time?.formatted ?? 'unknown time';
+      const time = nowProgram?.time?.formatted ?? '不明な時間';
       return `
         <li>
           <button value="${data.station.id}" data-station-name="${stationName}" class="${isPlaying ? 'playing' : ''}">
@@ -390,6 +417,35 @@ const renderStations = async (areaId: string) => {
   document.querySelector<HTMLButtonElement>('.playing')?.focus();
 };
 
+let detailsIndex = 0;
+const renderProgramDetails = (clear = false) => {
+  if (clear) {
+    detailsEl.textContent = '';
+    return;
+  }
+  const station = nowPrograms[detailsIndex];
+  const program = station ? pickCurrentProgram(station.programs) : null;
+  if (!program) {
+    detailsEl.textContent = '';
+    return;
+  }
+  const time = program.time?.formatted ?? '不明な時間';
+  detailsEl.innerHTML = `
+    <p><img src="${program.img ?? ''}" alt="${program.title ?? 'タイトルなし'}"></p>
+    <h2>${program.title ?? 'タイトルなし'}</h2>
+    <p>${station.station.name ?? '不明な放送局'}</p>
+    <p>${time}</p>
+    ${program.desc || program.info ? `<p>${program.desc ?? ''}${program.info ?? ''}</p>` : ''}
+    ${program.pfm ? `<p>${program.pfm}</p>` : ''}
+    ${program.url ? `<p>番組Webサイト: <a href="${program.url}" target="_blank">${program.url}</a></p>` : ''}
+  `;
+  detailsEl.querySelectorAll('a').forEach((a) => {
+    a.target = '_blank';
+  });
+  const isPlaying = player.stationId === station.station.id && !player.paused;
+  detailsPlayEl.hidden = !station.station.id || isPlaying;
+};
+
 const init = async () => {
   try {
     if (!area.id) {
@@ -406,13 +462,22 @@ const init = async () => {
 
     await renderStations(area.id);
     const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
-    setTimeout(() => {
-      setInterval(() => {
-        void renderStations(area.id);
+    setTimeout(async () => {
+      setInterval(async () => {
+        await renderStations(area.id);
+        renderProgramDetails();
       }, 60_000);
-      void renderStations(area.id);
+      await renderStations(area.id);
+      renderProgramDetails();
     }, nextMinuteDelay);
 
+    player.listenEvent('loadstart', () => {
+      const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${player.stationId}"]`);
+      statusEl.textContent = `開始しています...`;
+      if (button) {
+        button.classList.add('playing');
+      }
+    });
     player.listenEvent('play', () => {
       const stationId = player.stationId;
       const buttons = panelEl.querySelectorAll('button');
@@ -444,34 +509,65 @@ const init = async () => {
   }
 };
 
+const play = async (stationId: string) => {
+  const alreadyPlaying = player.stationId === stationId;
+  if (alreadyPlaying) {
+    player.togglePlay();
+    return;
+  }
+
+  player.stop();
+  const isStopButton = stationId === '';
+  if (isStopButton) {
+    return;
+  }
+
+  try {
+    await player.play(stationId);
+  } catch (error) {
+    statusEl.textContent = `再生に失敗しました: ${String(error)}`;
+  }
+};
+
 panelEl.addEventListener('click', async (event) => {
   const target = (event.target as HTMLElement).closest('button');
   if (!target) {
     return;
   } 
   const stationId = target.value;
-  const alreadyPlaying = player.stationId === stationId;
-  if (alreadyPlaying) {
-    if (player.paused) {
-      player.play();
-    } else {
-      player.pause();
-    }
-    return;
-  }
-  player.stop();
-  const isStopButton = target.value === '';
-  if (isStopButton) {
-    return;
-  }
+  await play(stationId);
+});
 
-  statusEl.textContent = `開始しています...`;
-  target.classList.add('playing');
-  try {
-    await player.play(stationId);
-  } catch (error) {
-    statusEl.textContent = `再生に失敗しました: ${String(error)}`;
+openDetailsEl.addEventListener('click', () => {
+  if (player.stationId) {
+    detailsIndex = nowPrograms.findIndex((data) => data.station.id === player.stationId);
   }
+  renderProgramDetails();
+  dialogEl.showModal();
+});
+
+detailsPrevEl.addEventListener('click', () => {
+  detailsIndex = (detailsIndex - 1 + nowPrograms.length) % nowPrograms.length;
+  renderProgramDetails();
+});
+
+detailsNextEl.addEventListener('click', () => {
+  detailsIndex = (detailsIndex + 1) % nowPrograms.length;
+  renderProgramDetails();
+});
+
+detailsPlayEl.addEventListener('click', async () => {
+  const stationId = nowPrograms[detailsIndex].station.id;
+  const isPlaying = player.stationId === stationId && !player.paused;
+  if (!stationId || isPlaying) {
+    return;
+  }
+  await play(stationId);
+  dialogEl.close();
+});
+
+closeDetailsEl.addEventListener('click', () => {
+  dialogEl.close();
 });
 
 document.addEventListener('keydown', (event) => {
@@ -480,7 +576,7 @@ document.addEventListener('keydown', (event) => {
       return;
     }
     const buttons = Array.from(panelEl.querySelectorAll('button'));
-    const currentIndex = buttons.findIndex((button) => document.activeElement === button);
+    const currentIndex = buttons.findIndex((button) => button.value === player.stationId || button.value === '');
     const nextIndex = (() => {
       if (moveDirection === 'vertical') {
         const panelStyles = getComputedStyle(panelEl);
@@ -504,8 +600,9 @@ document.addEventListener('keydown', (event) => {
       }
       return currentIndex;
     })();
-    buttons[nextIndex].click();
-    buttons[nextIndex].focus();
+    const nextButton = buttons[nextIndex];
+    nextButton.focus();
+    play(nextButton.value);
   }
   switch (event.key) {
     case 'ArrowUp': {
