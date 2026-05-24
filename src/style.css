@@ -1,7 +1,7 @@
-#app {
+:root[data-show-footer="1"] main {
     margin-block-end: 50px;
 
-    @media (width < 400px) {
+    @media (width < 375px) {
         margin-block-end: 70px;
     }
 }
