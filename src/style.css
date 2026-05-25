@@ -6,8 +6,26 @@
     }
 }
 
+main {
+    margin-block-start: 200px;
+}
+
 img {
     max-width: 100%;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    background-color: #ffffff;
+    border-block-end: 1px solid #ccc;
+    padding: 8px;
+
+    @media (prefers-color-scheme: dark) {
+        background-color: #121212;
+    }
 }
 
 #panel {

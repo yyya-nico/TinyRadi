@@ -322,9 +322,11 @@ if (!app) {
 
 app.innerHTML = `
   <main>
-    <h1>TinyRadi</h1>
-    <p id="area"></p>
-    <p id="status">読み込み中...</p>
+    <header>
+      <h1>TinyRadi</h1>
+      <p id="area"></p>
+      <p id="status">読み込み中...</p>
+    </header>
     <ul id="panel"></ul>
     <button id="open-details" disabled>番組詳細</button>
     <dialog id="dialog">
@@ -332,7 +334,6 @@ app.innerHTML = `
       <div id="details"></div>
     </dialog>
     <audio id="audio" autoplay></audio>
-    </footer>
   </main>
   <footer>
     <p>radiko.jpへのリンク:</p>
