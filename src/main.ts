@@ -373,44 +373,80 @@ const pickCurrentProgram = (programs: Program[]) => {
     return programs.length > 0 ? programs[programs.length - 1] : null;
 };
 
-let nowPrograms: { station: { id: string | null; name: string | null }; programs: Program[] }[] = [];
-const renderStations = async (areaId: string) => {
-  nowPrograms = await api.nowPrograms(areaId);
+let stockedPrograms: { station: { id: string | null; name: string | null }; programs: Program[] }[] = [];
+let isInitialRender = true;
 
-  panelEl.innerHTML = nowPrograms
-    .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
+const renderStations = async (areaId: string) => {
+  const buildButton = ({ id, name }: { id: string | null; name: string | null }, program: Program | null) => {
+    const { title, pfm, time: { formatted: time } = {} } = program || {};
+    const isPlaying = player.stationId === id && !player.paused;
+    return `
+        <button value="${id ?? ''}" data-station-name="${name ?? '不明な放送局'}" class="${isPlaying ? 'playing' : ''}">
+          <h2>
+            <div class="title" title="${title ?? 'タイトルなし'}">
+              <span>${title ?? 'タイトルなし'}</span>
+            </div>
+            <div class="station-name" title="${name ?? '不明な放送局'}">
+              <span>${name ?? '不明な放送局'}</span>
+            </div>
+          </h2>
+          <p><span title="${pfm ?? ''}">${pfm ?? ''}</span></p>
+          <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
+        </button>`;
+  };
+  const nowPrograms = await api.nowPrograms(areaId);
+
+  if (isInitialRender) {
+    panelEl.innerHTML = nowPrograms
+      .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
+        const nowProgram = pickCurrentProgram(data.programs);
+        return `
+      <li>
+        ${buildButton(data.station, nowProgram)}
+      </li>`;
+      })
+      .concat([
+        `<li><button value="" id="stop"><h2>停止</h2></button></li>`,
+      ])
+      .join('');
+    isInitialRender = false;
+  } else {
+    nowPrograms.forEach((data) => {
+      const stationId = data.station.id;
+      const oldData = stockedPrograms.find((d) => d.station.id === stationId);
+      const oldProgram = oldData ? pickCurrentProgram(oldData.programs) : null;
       const nowProgram = pickCurrentProgram(data.programs);
-      const isPlaying = player.stationId === data.station.id && !player.paused;
-      const title = nowProgram?.title ?? 'タイトルなし';
-      const stationName = data.station.name ?? '不明な放送局';
-      const pfm = nowProgram?.pfm ?? '';
-      const time = nowProgram?.time?.formatted ?? '不明な時間';
-      return `
-        <li>
-          <button value="${data.station.id}" data-station-name="${stationName}" class="${isPlaying ? 'playing' : ''}">
-            <h2>
-              <div class="title" title="${title}">
-                <span>${title}</span>
-              </div>
-              <div class="station-name" title="${stationName}">
-                <span>${stationName}</span>
-              </div>
-            </h2>
-            <p><span title="${pfm}">${pfm}</span></p>
-            <p class="time"><span title="${time}">${time}</span></p>
-          </button>
-        </li>`;
-    })
-    .concat([
-      `<li><button value="" id="stop"><h2>停止</h2></button></li>`,
-    ])
-    .join('');
-  document.querySelector<HTMLButtonElement>('.playing')?.focus();
+      
+      if (oldProgram?.title !== nowProgram?.title) {
+        const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
+        if (button) {
+          button.outerHTML = buildButton(data.station, nowProgram);
+        }
+      }
+    });
+  }
+
+  stockedPrograms = nowPrograms;
 };
 
+let lastRenderedProgramTitle: string | null = null;
+
 const renderProgramDetails = () => {
+  const buildDetails = (name: string | null, program: Program) => {
+    const { title, time: { formatted: time } = {}, desc, info, pfm, url, img } = program;
+    return `
+      <p><img src="${img}" alt="${title ?? 'タイトルなし'}"></p> 
+      <h2>${title ?? 'タイトルなし'}</h2>
+      <p>${name ?? '不明な放送局'}</p>
+      <p>${time ?? '放送時間不明'}</p>
+      ${desc || info ? `<p>${desc ?? ''}${info ?? ''}</p>` : ''}
+      ${pfm ? `<p>${pfm}</p>` : ''}
+      ${url ? `<p>番組Webサイト: <a href="${url}" target="_blank">${url}</a></p>` : ''}
+    `;
+  };
   const clearDetails = () => {
     detailsEl.textContent = '';
+    lastRenderedProgramTitle = null;
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = null;
     }
@@ -419,7 +455,7 @@ const renderProgramDetails = () => {
     clearDetails();
     return;
   }
-  const station = nowPrograms.find((data) => data.station.id === player.stationId);
+  const station = stockedPrograms.find((data) => data.station.id === player.stationId);
   if (!station) {
     clearDetails();
     return;
@@ -429,16 +465,13 @@ const renderProgramDetails = () => {
     clearDetails();
     return;
   }
-  const time = program.time?.formatted ?? '不明な時間';
-  detailsEl.innerHTML = `
-    <p><img src="${program.img ?? ''}" alt="${program.title ?? 'タイトルなし'}"></p>
-    <h2>${program.title ?? 'タイトルなし'}</h2>
-    <p>${station.station.name ?? '不明な放送局'}</p>
-    <p>${time}</p>
-    ${program.desc || program.info ? `<p>${program.desc ?? ''}${program.info ?? ''}</p>` : ''}
-    ${program.pfm ? `<p>${program.pfm}</p>` : ''}
-    ${program.url ? `<p>番組Webサイト: <a href="${program.url}" target="_blank">${program.url}</a></p>` : ''}
-  `;
+  
+  if (lastRenderedProgramTitle === program.title) {
+    return;
+  }
+  
+  lastRenderedProgramTitle = program.title;
+  detailsEl.innerHTML = buildDetails(station.station.name, program);
   detailsEl.querySelectorAll('a').forEach((a) => {
     a.target = '_blank';
   });
@@ -560,9 +593,9 @@ closeDetailsEl.addEventListener('click', () => {
 
 if ('mediaSession' in navigator) {
   const trackBy = (offset: number) => {
-    const currentIndex = nowPrograms.findIndex((data) => data.station.id === player.stationId);
-    const nextIndex = (currentIndex + offset + nowPrograms.length) % nowPrograms.length;
-    const stationId = nowPrograms[nextIndex].station.id ?? '';
+    const currentIndex = stockedPrograms.findIndex((data) => data.station.id === player.stationId);
+    const nextIndex = (currentIndex + offset + stockedPrograms.length) % stockedPrograms.length;
+    const stationId = stockedPrograms[nextIndex].station.id ?? '';
     const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
     if (button) {
       button.focus();
