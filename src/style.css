@@ -6,6 +6,15 @@
     }
 }
 
+html {
+    scroll-padding-top: 200px;
+    scroll-padding-bottom: 50px;
+
+    @media (width < 375px) {
+        scroll-padding-bottom: 70px;
+    }
+}
+
 main {
     margin-block-start: 200px;
 }
