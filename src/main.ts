@@ -447,7 +447,7 @@ const renderProgramDetails = () => {
       title: program.title ?? '',
       artist: station.station.name ?? '',
       artwork: [
-        { src: program.img ?? '', sizes: '480x300', type: 'image/png' },
+        { src: program.img ?? '', sizes: '480x300' },
       ],
     });
   }
