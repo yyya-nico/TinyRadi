@@ -29,7 +29,6 @@ header {
     right: 0;
     left: 0;
     background-color: #ffffff;
-    border-block-end: 1px solid #ccc;
     padding: 8px;
 
     @media (prefers-color-scheme: dark) {
@@ -115,7 +114,6 @@ footer {
     right: 0;
     bottom: 0;
     left: 0;
-    border-block-start: 1px solid #ccc;
     padding: 8px;
     background-color: #ffffff;
 
