@@ -8,7 +8,7 @@
                 {
                     "header": "content-security-policy",
                     "operation": "set",
-                    "value": "default-src data: blob: chrome-extension: ; connect-src https: data: blob: chrome-extension: ; img-src https://*.radiko.jp data: blob: chrome-extension: ;"
+                    "value": "default-src data: blob: chrome-extension: ; connect-src https: data: blob: chrome-extension: ; img-src https: data: blob: chrome-extension: ;"
                 }
             ]
         },
