@@ -16,6 +16,7 @@ type Station = {
 };
 
 type Program = {
+  id: string | null;
   time_raw: {
     ft: string | null;
     to: string | null;
@@ -117,6 +118,7 @@ class API {
         };
         const programs = Array.from(el.querySelectorAll('prog')).map((el) => {
           const program: Program = {
+            id: el.getAttribute('id'),
             time_raw: {
               ft: el.getAttribute('ft'),
               to: el.getAttribute('to'),
@@ -418,7 +420,7 @@ const renderStations = async (areaId: string) => {
       const oldProgram = oldData ? pickCurrentProgram(oldData.programs) : null;
       const nowProgram = pickCurrentProgram(data.programs);
       
-      if (oldProgram?.title !== nowProgram?.title) {
+      if (oldProgram?.id !== nowProgram?.id) {
         const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
         if (button) {
           button.outerHTML = buildButton(data.station, nowProgram);
@@ -430,7 +432,7 @@ const renderStations = async (areaId: string) => {
   stockedPrograms = nowPrograms;
 };
 
-let lastRenderedProgramTitle: string | null = null;
+let lastRenderedProgramId: string | null = null;
 
 const renderProgramDetails = () => {
   const buildDetails = (name: string | null, program: Program) => {
@@ -447,7 +449,7 @@ const renderProgramDetails = () => {
   };
   const clearDetails = () => {
     detailsEl.textContent = '';
-    lastRenderedProgramTitle = null;
+    lastRenderedProgramId = null;
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = null;
     }
@@ -467,11 +469,11 @@ const renderProgramDetails = () => {
     return;
   }
   
-  if (lastRenderedProgramTitle === program.title) {
+  if (lastRenderedProgramId === program.id) {
     return;
   }
   
-  lastRenderedProgramTitle = program.title;
+  lastRenderedProgramId = program.id;
   detailsEl.innerHTML = buildDetails(station.station.name, program);
   detailsEl.querySelectorAll('a').forEach((a) => {
     a.target = '_blank';
