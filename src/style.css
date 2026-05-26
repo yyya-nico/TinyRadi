@@ -7,7 +7,7 @@
 }
 
 html {
-    scroll-padding-top: 200px;
+    scroll-padding-top: 180px;
     scroll-padding-bottom: 50px;
 
     @media (width < 375px) {
@@ -16,7 +16,7 @@ html {
 }
 
 main {
-    margin-block-start: 200px;
+    margin-block-start: 180px;
 }
 
 img {
@@ -28,8 +28,9 @@ header {
     top: 0;
     right: 0;
     left: 0;
+    min-height: 170px;
+    padding-inline: 8px;
     background-color: #ffffff;
-    padding: 8px;
 
     @media (prefers-color-scheme: dark) {
         background-color: #121212;
