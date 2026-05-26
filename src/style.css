@@ -104,6 +104,10 @@ header {
 }
 
 #dialog {
+    scrollbar-gutter: stable both-edges;
+}
+
+#details {
     max-width: 480px;
 }
 
