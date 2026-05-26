@@ -377,15 +377,18 @@ const pickCurrentProgram = (programs: Program[]) => {
     return programs.length > 0 ? programs[programs.length - 1] : null;
 };
 
-let stockedPrograms: { station: Station; programs: Program[] }[] = [];
-let isInitialRender = true;
+let programs: { station: Station; programs: Program[] }[] = [];
 
-const renderStations = async (areaId: string) => {
+const updatePrograms = async (areaId: string) => {
+  programs = await api.nowPrograms(areaId);
+};
+
+const renderStations = (init = false) => {
   const buildButton = ({ id, name }: Station, program: Program | null) => {
-    const { title, pfm, time: { formatted: time } = {} } = program || {};
+    const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
     const isPlaying = player.stationId === id && !player.paused;
     return `
-        <button value="${id ?? ''}" data-station-name="${name ?? '不明な放送局'}" class="${isPlaying ? 'playing' : ''}">
+        <button value="${id ?? ''}" data-station-name="${name ?? '不明な放送局'}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
           <h2>
             <div class="title" title="${title ?? 'タイトルなし'}">
               <span>${title ?? 'タイトルなし'}</span>
@@ -398,10 +401,9 @@ const renderStations = async (areaId: string) => {
           <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
         </button>`;
   };
-  const nowPrograms = await api.nowPrograms(areaId);
 
-  if (isInitialRender) {
-    panelEl.innerHTML = nowPrograms
+  if (init) {
+    panelEl.innerHTML = programs
       .map((data) => {
         const nowProgram = pickCurrentProgram(data.programs);
         return `
@@ -413,24 +415,20 @@ const renderStations = async (areaId: string) => {
         `<li><button value="" id="stop"><h2>停止</h2></button></li>`,
       ])
       .join('');
-    isInitialRender = false;
   } else {
-    nowPrograms.forEach((data) => {
+    programs.forEach((data) => {
       const stationId = data.station.id;
-      const oldData = stockedPrograms.find((d) => d.station.id === stationId);
-      const oldProgram = oldData ? pickCurrentProgram(oldData.programs) : null;
+      const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
+      if (!button) {
+        return;
+      }
       const nowProgram = pickCurrentProgram(data.programs);
       
-      if (oldProgram?.id !== nowProgram?.id) {
-        const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
-        if (button) {
-          button.outerHTML = buildButton(data.station, nowProgram);
-        }
+      if (button.dataset.programId !== nowProgram?.id) {
+        button.outerHTML = buildButton(data.station, nowProgram);
       }
     });
   }
-
-  stockedPrograms = nowPrograms;
 };
 
 let lastRenderedProgramId: string | null = null;
@@ -459,7 +457,7 @@ const renderProgramDetails = () => {
     clearDetails();
     return;
   }
-  const station = stockedPrograms.find((data) => data.station.id === player.stationId);
+  const station = programs.find((data) => data.station.id === player.stationId);
   if (!station) {
     clearDetails();
     return;
@@ -505,15 +503,19 @@ const init = async () => {
 
     statusEl.textContent = '局を選択してください';
 
-    await renderStations(areaId);
+    updatePrograms(areaId).then(() => {
+      renderStations(true);
+    });
     const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
-    setTimeout(async () => {
-      setInterval(async () => {
-        await renderStations(areaId);
+    const intervalRender = () => {
+      updatePrograms(areaId).then(() => {
+        renderStations();
         renderProgramDetails();
-      }, 60_000);
-      await renderStations(areaId);
-      renderProgramDetails();
+      });
+    };
+    setTimeout(() => {
+      setInterval(intervalRender, 60_000);
+      intervalRender();
     }, nextMinuteDelay);
 
     player.listenEvent('loadstart', () => {
@@ -598,9 +600,9 @@ closeDetailsEl.addEventListener('click', () => {
 
 if ('mediaSession' in navigator) {
   const trackBy = (offset: number) => {
-    const currentIndex = stockedPrograms.findIndex((data) => data.station.id === player.stationId);
-    const nextIndex = (currentIndex + offset + stockedPrograms.length) % stockedPrograms.length;
-    const stationId = stockedPrograms[nextIndex].station.id ?? '';
+    const currentIndex = programs.findIndex((data) => data.station.id === player.stationId);
+    const nextIndex = (currentIndex + offset + programs.length) % programs.length;
+    const stationId = programs[nextIndex].station.id ?? '';
     const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
     if (button) {
       button.focus();
