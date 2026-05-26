@@ -262,10 +262,8 @@ class Player {
     return this.audio.paused;
   }
 
-  stop = (triggerEvent = true) => {
-    if (triggerEvent) {
-      this.audio.dispatchEvent(new Event('stop'));
-    }
+  stop = () => {
+    this.audio.dispatchEvent(new Event('stop'));
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;
@@ -283,7 +281,6 @@ class Player {
       this.audio.play();
       return;
     }
-    this.stop(false);
     this.stationId = stationId;
 
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
@@ -594,9 +591,9 @@ const play = async (stationId: string) => {
     return;
   }
 
+  player.stop();
   const isStopButton = stationId === '';
   if (isStopButton) {
-    player.stop();
     return;
   }
 
