@@ -254,6 +254,13 @@ class Player {
     this.authToken = await this.api.authorize().then((result) => result.authToken);
   }
 
+  private destroyHls = () => {
+    if (this.hls) {
+      this.hls.destroy();
+      this.hls = null;
+    }
+  };
+
   listenEvent = (event: string, handler: () => void) => {
     this.audio.addEventListener(event, handler);
   };
@@ -263,12 +270,9 @@ class Player {
   }
 
   stop = () => {
-    this.audio.dispatchEvent(new Event('stop'));
-    if (this.hls) {
-      this.hls.destroy();
-      this.hls = null;
-    }
+    this.destroyHls();
     this.stationId = null;
+    this.audio.dispatchEvent(new Event('stop'));
   };
 
   pause = () => {
@@ -281,6 +285,7 @@ class Player {
       this.audio.play();
       return;
     }
+    this.destroyHls();
     this.stationId = stationId;
 
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
@@ -539,6 +544,10 @@ const init = async () => {
     }, nextMinuteDelay);
 
     player.listenEvent('loadstart', () => {
+      const playingButton = panelEl.querySelector<HTMLButtonElement>('button.playing');
+      if (playingButton) {
+        playingButton.classList.remove('playing');
+      }
       const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${player.stationId}"]`);
       statusEl.textContent = `開始しています...`;
       if (button) {
@@ -591,9 +600,9 @@ const play = async (stationId: string) => {
     return;
   }
 
-  player.stop();
   const isStopButton = stationId === '';
   if (isStopButton) {
+    player.stop();
     return;
   }
 
