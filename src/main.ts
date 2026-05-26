@@ -5,14 +5,15 @@ import Hls from 'hls.js';
 type Area = {
   id: string | null;
   name: string | null;
+  nameEn?: string | null;
 };
 
 type Station = {
   id: string | null;
   name: string | null;
-  areafree: boolean;
-  timefree: boolean;
-  href: string | null;
+  areafree?: boolean;
+  timefree?: boolean;
+  href?: string | null;
 };
 
 type Program = {
@@ -83,7 +84,7 @@ class API {
     .then((res) => res.text())
     .then((txt) => {
       const [, id, name] = txt.match(/class="([^"]+)">([a-zA-Z ]+)/) ?? [, null, null];
-      return { id, name };
+      return { id, name } as Area;
     });
 
   stations = (areaId: string) =>
@@ -91,11 +92,11 @@ class API {
     .then((res) => res.text())
     .then((txt) => {
       const doc = this.parseXml(txt);
-      const area = {
+      const area: Area = {
         id: doc.querySelector('stations')?.getAttribute('area_id') || null,
         name: doc.querySelector('stations')?.getAttribute('area_name') || null,
       };
-      const stations = Array.from(doc.querySelectorAll('station'))
+      const stations: Station[] = Array.from(doc.querySelectorAll('station'))
         .map((el) => ({
           id: el.querySelector('id')?.textContent || null,
           name: el.querySelector('name')?.textContent || null,
@@ -103,7 +104,7 @@ class API {
           timefree: el.querySelector('timefree')?.textContent === '1',
           href: el.querySelector('href')?.textContent || null,
         }));
-      return { area, stations } as { area: Area; stations: Station[] };
+      return { area, stations };
     });
 
   nowPrograms = (areaId: string) =>
@@ -112,7 +113,7 @@ class API {
     .then((txt) => {
       const doc = this.parseXml(txt);
       const stations = Array.from(doc.querySelectorAll('station')).map((el) => {
-        const station = {
+        const station: Station = {
           id: el.getAttribute('id'),
           name: el.querySelector('name')?.textContent || null,
         };
@@ -146,7 +147,7 @@ class API {
           }
           return program;
         });
-        return { station, programs } as { station: { id: string | null; name: string | null }; programs: Program[] };
+        return { station, programs };
       });
       return stations;
     });
@@ -199,7 +200,7 @@ class API {
     if (!auth2Res.ok) {
       throw new Error('auth2 failed');
     }
-    const area = await auth2Res.text().then((txt) => {
+    const area: Area = await auth2Res.text().then((txt) => {
       const [id, name, nameEn] = txt.trim().split(',');
       return { id, name, nameEn };
     });
@@ -376,11 +377,11 @@ const pickCurrentProgram = (programs: Program[]) => {
     return programs.length > 0 ? programs[programs.length - 1] : null;
 };
 
-let stockedPrograms: { station: { id: string | null; name: string | null }; programs: Program[] }[] = [];
+let stockedPrograms: { station: Station; programs: Program[] }[] = [];
 let isInitialRender = true;
 
 const renderStations = async (areaId: string) => {
-  const buildButton = ({ id, name }: { id: string | null; name: string | null }, program: Program | null) => {
+  const buildButton = ({ id, name }: Station, program: Program | null) => {
     const { title, pfm, time: { formatted: time } = {} } = program || {};
     const isPlaying = player.stationId === id && !player.paused;
     return `
@@ -401,7 +402,7 @@ const renderStations = async (areaId: string) => {
 
   if (isInitialRender) {
     panelEl.innerHTML = nowPrograms
-      .map((data: { station: { id: string | null; name: string | null }; programs: Program[] }) => {
+      .map((data) => {
         const nowProgram = pickCurrentProgram(data.programs);
         return `
       <li>
@@ -491,10 +492,11 @@ const renderProgramDetails = () => {
 
 const init = async () => {
   try {
-    if (!area.id) {
+    const areaId = area.id;
+    if (!areaId) {
       statusEl.textContent = '現在地の検出に失敗しました';
       return;
-    } else if (area.id === 'OUT') {
+    } else if (areaId === 'OUT') {
       statusEl.textContent = 'サービス提供エリア外のためTinyRadiを利用できません';
       return;
     }
@@ -503,14 +505,14 @@ const init = async () => {
 
     statusEl.textContent = '局を選択してください';
 
-    await renderStations(area.id);
+    await renderStations(areaId);
     const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
     setTimeout(async () => {
       setInterval(async () => {
-        await renderStations(area.id);
+        await renderStations(areaId);
         renderProgramDetails();
       }, 60_000);
-      await renderStations(area.id);
+      await renderStations(areaId);
       renderProgramDetails();
     }, nextMinuteDelay);
 
