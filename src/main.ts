@@ -8,12 +8,15 @@ type Area = {
   nameEn?: string | null;
 };
 
+type StationInfo = {
+  areafree: boolean;
+  timefree: boolean;
+  href: string | null;
+};
+
 type Station = {
   id: string | null;
   name: string | null;
-  areafree?: boolean;
-  timefree?: boolean;
-  href?: string | null;
 };
 
 type Program = {
@@ -96,7 +99,7 @@ class API {
         id: doc.querySelector('stations')?.getAttribute('area_id') || null,
         name: doc.querySelector('stations')?.getAttribute('area_name') || null,
       };
-      const stations: Station[] = Array.from(doc.querySelectorAll('station'))
+      const stations: (Station & StationInfo)[] = Array.from(doc.querySelectorAll('station'))
         .map((el) => ({
           id: el.querySelector('id')?.textContent || null,
           name: el.querySelector('name')?.textContent || null,
@@ -147,7 +150,7 @@ class API {
           }
           return program;
         });
-        return { station, programs };
+        return { ...station, programs };
       });
       return stations;
     });
@@ -259,8 +262,10 @@ class Player {
     return this.audio.paused;
   }
 
-  stop = () => {
-    this.audio.dispatchEvent(new Event('stop'));
+  stop = (triggerEvent = true) => {
+    if (triggerEvent) {
+      this.audio.dispatchEvent(new Event('stop'));
+    }
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;
@@ -278,6 +283,7 @@ class Player {
       this.audio.play();
       return;
     }
+    this.stop(false);
     this.stationId = stationId;
 
     const streamUrl = await this.api.stationStreamUrl(stationId, false);
@@ -377,14 +383,16 @@ const pickCurrentProgram = (programs: Program[]) => {
     return programs.length > 0 ? programs[programs.length - 1] : null;
 };
 
-let programs: { station: Station; programs: Program[] }[] = [];
+let programsByStation: (Station & { programs: Program[] })[] = [];
 
 const updatePrograms = async (areaId: string) => {
-  programs = await api.nowPrograms(areaId);
+  programsByStation = await api.nowPrograms(areaId);
 };
 
 const renderStations = (init = false) => {
-  const buildButton = ({ id, name }: Station, program: Program | null) => {
+  const buildButton = (station: Station & { programs: Program[] }) => {
+    const { id, name } = station;
+    const program = pickCurrentProgram(station.programs);
     const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
     const isPlaying = player.stationId === id && !player.paused;
     return `
@@ -403,12 +411,11 @@ const renderStations = (init = false) => {
   };
 
   if (init) {
-    panelEl.innerHTML = programs
-      .map((data) => {
-        const nowProgram = pickCurrentProgram(data.programs);
+    panelEl.innerHTML = programsByStation
+      .map((station) => {
         return `
       <li>
-        ${buildButton(data.station, nowProgram)}
+        ${buildButton(station)}
       </li>`;
       })
       .concat([
@@ -416,24 +423,72 @@ const renderStations = (init = false) => {
       ])
       .join('');
   } else {
-    programs.forEach((data) => {
-      const stationId = data.station.id;
+    programsByStation.forEach((station) => {
+      const stationId = station.id;
       const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
       if (!button) {
         return;
       }
-      const nowProgram = pickCurrentProgram(data.programs);
+      const nowProgram = pickCurrentProgram(station.programs);
       
       if (button.dataset.programId !== nowProgram?.id) {
-        button.outerHTML = buildButton(data.station, nowProgram);
+        button.outerHTML = buildButton(station);
       }
     });
   }
 };
 
-let lastRenderedProgramId: string | null = null;
+let lastProgramId: string | null = null;
 
-const renderProgramDetails = () => {
+const prepareMetadata = () => {
+  const stationId = player.stationId;
+  const station = stationId ? programsByStation.find((station) => station.id === stationId) || null : null;
+  const program = station ? pickCurrentProgram(station.programs) : null;
+  if (!stationId || !station || !program) {
+    const changed = lastProgramId !== null;
+    lastProgramId = null;
+    return { station, program, changed, isEmpty: true };
+  }
+
+  const changed = lastProgramId !== program.id;
+
+  lastProgramId = program.id;
+
+  return { station, program, changed, isEmpty: false };
+};
+
+const renderMetadata = ({ station, program, changed, isEmpty }: { station: Station | null; program: Program | null; changed: boolean; isEmpty: boolean }) => {
+  if (!("mediaSession" in navigator) || !changed) {
+    return;
+  }
+
+  if (isEmpty || !station || !program) {
+    navigator.mediaSession.metadata = null;
+    return;
+  }
+
+  const { name } = station;
+  const { title, img } = program;
+
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: title ?? '',
+    artist: name ?? '',
+    artwork: [
+      { src: img ?? '', sizes: '480x300' },
+    ],
+  });
+};
+
+const renderProgramDetails = ({ station, program, changed, isEmpty }: { station: Station | null; program: Program | null; changed: boolean; isEmpty: boolean }, isOpen: boolean = false) => {
+  if (!dialogEl.open || dialogEl.open && !isOpen && !changed) {
+    return;
+  }
+
+  if (isEmpty || !station || !program) {
+    detailsEl.innerHTML = '';
+    return;
+  }
+
   const buildDetails = (name: string | null, program: Program) => {
     const { title, time: { formatted: time } = {}, desc, info, pfm, url, img } = program;
     return `
@@ -446,46 +501,12 @@ const renderProgramDetails = () => {
       ${url ? `<p>番組Webサイト: <a href="${url}" target="_blank">${url}</a></p>` : ''}
     `;
   };
-  const clearDetails = () => {
-    detailsEl.textContent = '';
-    lastRenderedProgramId = null;
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.metadata = null;
-    }
-  };
-  if (player.stationId === null) {
-    clearDetails();
-    return;
-  }
-  const station = programs.find((data) => data.station.id === player.stationId);
-  if (!station) {
-    clearDetails();
-    return;
-  }
-  const program = station ? pickCurrentProgram(station.programs) : null;
-  if (!program) {
-    clearDetails();
-    return;
-  }
   
-  if (lastRenderedProgramId === program.id) {
-    return;
-  }
-  
-  lastRenderedProgramId = program.id;
-  detailsEl.innerHTML = buildDetails(station.station.name, program);
+  detailsEl.innerHTML = buildDetails(station.name, program);
   detailsEl.querySelectorAll('a').forEach((a) => {
     a.target = '_blank';
   });
-  if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: program.title ?? '',
-      artist: station.station.name ?? '',
-      artwork: [
-        { src: program.img ?? '', sizes: '480x300' },
-      ],
-    });
-  }
+  lastProgramId = program.id;
 };
 
 const init = async () => {
@@ -510,7 +531,9 @@ const init = async () => {
     const intervalRender = () => {
       updatePrograms(areaId).then(() => {
         renderStations();
-        renderProgramDetails();
+        const metadata = prepareMetadata();
+        renderMetadata(metadata);
+        renderProgramDetails(metadata);
       });
     };
     setTimeout(() => {
@@ -524,6 +547,9 @@ const init = async () => {
       if (button) {
         button.classList.add('playing');
       }
+      const metadata = prepareMetadata();
+      renderMetadata(metadata);
+      renderProgramDetails(metadata);
     });
     player.listenEvent('play', () => {
       const stationId = player.stationId;
@@ -551,6 +577,9 @@ const init = async () => {
         button.classList.remove('playing');
       }
       openDetailsEl.disabled = true;
+      const metadata = prepareMetadata();
+      renderMetadata(metadata);
+      renderProgramDetails(metadata);
     });
 
   } catch (error) {
@@ -565,16 +594,14 @@ const play = async (stationId: string) => {
     return;
   }
 
-  player.stop();
   const isStopButton = stationId === '';
   if (isStopButton) {
-    renderProgramDetails();
+    player.stop();
     return;
   }
 
   try {
     await player.play(stationId);
-    renderProgramDetails();
   } catch (error) {
     statusEl.textContent = `再生に失敗しました: ${String(error)}`;
   }
@@ -591,18 +618,23 @@ panelEl.addEventListener('click', async (event) => {
 
 openDetailsEl.addEventListener('click', () => {
   dialogEl.showModal();
-  dialogEl.scrollTop = 0;
+  const metadata = prepareMetadata();
+  renderProgramDetails(metadata, true);
 });
 
 closeDetailsEl.addEventListener('click', () => {
   dialogEl.close();
 });
 
+dialogEl.addEventListener('close', () => {
+  detailsEl.innerHTML = '';
+});
+
 if ('mediaSession' in navigator) {
   const trackBy = (offset: number) => {
-    const currentIndex = programs.findIndex((data) => data.station.id === player.stationId);
-    const nextIndex = (currentIndex + offset + programs.length) % programs.length;
-    const stationId = programs[nextIndex].station.id ?? '';
+    const currentIndex = programsByStation.findIndex((station) => station.id === player.stationId);
+    const nextIndex = (currentIndex + offset + programsByStation.length) % programsByStation.length;
+    const stationId = programsByStation[nextIndex].id ?? '';
     const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
     if (button) {
       button.focus();
