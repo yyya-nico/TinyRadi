@@ -336,10 +336,19 @@ app.innerHTML = `
     <header>
       <h1>TinyRadi</h1>
       <p id="area"></p>
-      <p id="status">読み込み中...</p>
     </header>
+    <p id="status">読み込み中...</p>
+    <div class="now-playing">
+      <p><img id="media-image" width="480" height="300" alt="No Image"></p>
+      <div>
+        <h2 id="media-title"></h2>
+        <p id="media-station"></p>
+        <p id="media-pfm"></p>
+        <p id="media-time"></p>
+      </div>
+      <p><button id="open-details" disabled>番組詳細</button></p>
+    </div>
     <ul id="panel"></ul>
-    <button id="open-details" disabled>番組詳細</button>
     <dialog id="dialog">
       <button id="close-details">閉じる</button>
       <div id="details"></div>
@@ -356,16 +365,22 @@ app.innerHTML = `
   </footer>
 `;
 
-const statusEl = document.querySelector<HTMLParagraphElement>('#status');
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
-const panelEl = document.querySelector<HTMLUListElement>('#panel');
+const statusEl = document.querySelector<HTMLParagraphElement>('#status');
+const mediaImageEl = document.querySelector<HTMLImageElement>('#media-image');
+const mediaTitleEl = document.querySelector<HTMLHeadingElement>('#media-title');
+const mediaStationEl = document.querySelector<HTMLParagraphElement>('#media-station');
+const mediaPfmEl = document.querySelector<HTMLParagraphElement>('#media-pfm');
+const mediaTimeEl = document.querySelector<HTMLParagraphElement>('#media-time');
 const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
 const dialogEl = document.querySelector<HTMLDialogElement>('#dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
+const panelEl = document.querySelector<HTMLUListElement>('#panel');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!statusEl || !areaEl || !panelEl || !openDetailsEl || !dialogEl || !detailsEl|| !closeDetailsEl || !audioEl) {
+if (!areaEl || !statusEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl || !mediaTimeEl
+  || !openDetailsEl || !dialogEl || !detailsEl || !closeDetailsEl || !panelEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -398,7 +413,7 @@ const renderStations = (init = false) => {
     const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
     const isPlaying = player.stationId === id && !player.paused;
     return `
-        <button value="${id ?? ''}" data-station-name="${name ?? '不明な放送局'}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
+        <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
           <h2>
             <div class="title" title="${title ?? 'タイトルなし'}">
               <span>${title ?? 'タイトルなし'}</span>
@@ -481,6 +496,29 @@ const renderMetadata = ({ station, program, changed, isEmpty }: { station: Stati
   });
 };
 
+const renderNowPlaying = ({ station, program, changed, isEmpty }: { station: Station | null; program: Program | null; changed: boolean; isEmpty: boolean }) => {
+  if (!changed) {
+    return;
+  }
+
+  if (isEmpty || !station || !program) {
+    mediaImageEl.src = '';
+    mediaImageEl.alt = 'No Image';
+    mediaTitleEl.textContent = '';
+    mediaStationEl.textContent = '';
+    mediaPfmEl.textContent = '';
+    mediaTimeEl.textContent = '';
+    return;
+  }
+  
+  mediaImageEl.src = program.img ?? '';
+  mediaImageEl.alt = program.title ?? 'No Image';
+  mediaTitleEl.textContent = program.title ?? '';
+  mediaStationEl.textContent = station.name ?? '';
+  mediaPfmEl.textContent = program.pfm ?? '';
+  mediaTimeEl.textContent = program.time.formatted ?? '';
+};
+
 const renderProgramDetails = ({ station, program, changed, isEmpty }: { station: Station | null; program: Program | null; changed: boolean; isEmpty: boolean }, isOpen: boolean = false) => {
   if (!dialogEl.open || dialogEl.open && !isOpen && !changed) {
     return;
@@ -535,6 +573,7 @@ const init = async () => {
         renderStations();
         const metadata = prepareMetadata();
         renderMetadata(metadata);
+        renderNowPlaying(metadata);
         renderProgramDetails(metadata);
       });
     };
@@ -555,14 +594,14 @@ const init = async () => {
       }
       const metadata = prepareMetadata();
       renderMetadata(metadata);
+      renderNowPlaying(metadata);
       renderProgramDetails(metadata);
     });
     player.listenEvent('play', () => {
       const stationId = player.stationId;
       const buttons = panelEl.querySelectorAll('button');
       const targetButton = Array.from(buttons).find((button) => button.value === stationId);
-      const stationName = targetButton?.dataset.stationName;
-      statusEl.textContent = stationName ? `再生中: ${stationName}` : '再生中';
+      statusEl.textContent = '再生中';
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
@@ -570,8 +609,7 @@ const init = async () => {
     });
     player.listenEvent('pause', () => {
       const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
-      const stationName = button?.dataset.stationName;
-      statusEl.textContent = stationName ? `一時停止: ${stationName}` : '一時停止';
+      statusEl.textContent = '一時停止';
       if (button) {
         button.classList.remove('playing');
       }
@@ -585,6 +623,7 @@ const init = async () => {
       openDetailsEl.disabled = true;
       const metadata = prepareMetadata();
       renderMetadata(metadata);
+      renderNowPlaying(metadata);
       renderProgramDetails(metadata);
     });
 
