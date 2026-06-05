@@ -352,13 +352,13 @@ app.innerHTML = `
           <button id="open-details">番組詳細</button>
           <button id="hide-now-playing">非表示</button>
         </p>
-        <dialog id="dialog">
-          <div id="details"></div>
-          <button id="close-details">閉じる</button>
-        </dialog>
-        <audio id="audio" autoplay></audio>
       </div>
     </div>
+    <dialog id="dialog">
+      <div id="details"></div>
+      <button id="close-details">閉じる</button>
+    </dialog>
+    <audio id="audio" autoplay></audio>
   </main>
   <footer>
     <p>radiko.jpへのリンク:</p>
