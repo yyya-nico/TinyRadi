@@ -143,6 +143,10 @@ header {
     max-width: 480px;
 }
 
+#close-details {
+    width: 100%;
+}
+
 footer {
     display: flex;
     flex-wrap: wrap;

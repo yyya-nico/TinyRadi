@@ -353,8 +353,8 @@ app.innerHTML = `
           <button id="hide-now-playing">非表示</button>
         </p>
         <dialog id="dialog">
-          <button id="close-details">閉じる</button>
           <div id="details"></div>
+          <button id="close-details">閉じる</button>
         </dialog>
         <audio id="audio" autoplay></audio>
       </div>
