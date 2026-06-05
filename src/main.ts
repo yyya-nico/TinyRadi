@@ -337,23 +337,28 @@ app.innerHTML = `
       <h1>TinyRadi</h1>
       <p id="area"></p>
     </header>
-    <p id="status">読み込み中...</p>
-    <div class="now-playing">
+    <ul id="panel"></ul>
+    <div id="now-playing" hidden>
       <p><img id="media-image" width="480" height="300" alt="No Image"></p>
       <div>
         <h2 id="media-title"></h2>
         <p id="media-station"></p>
         <p id="media-pfm"></p>
         <p id="media-time"></p>
+        <p class="media-controls">
+          <button id="prev">前へ</button>
+          <button id="play-pause" disabled>再生</button>
+          <button id="next">次へ</button>
+          <button id="open-details">番組詳細</button>
+          <button id="hide-now-playing">非表示</button>
+        </p>
+        <dialog id="dialog">
+          <button id="close-details">閉じる</button>
+          <div id="details"></div>
+        </dialog>
+        <audio id="audio" autoplay></audio>
       </div>
-      <p><button id="open-details" disabled>番組詳細</button></p>
     </div>
-    <ul id="panel"></ul>
-    <dialog id="dialog">
-      <button id="close-details">閉じる</button>
-      <div id="details"></div>
-    </dialog>
-    <audio id="audio" autoplay></audio>
   </main>
   <footer>
     <p>radiko.jpへのリンク:</p>
@@ -366,21 +371,25 @@ app.innerHTML = `
 `;
 
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
-const statusEl = document.querySelector<HTMLParagraphElement>('#status');
+const panelEl = document.querySelector<HTMLUListElement>('#panel');
+const nowPlayingEl = document.querySelector<HTMLDivElement>('#now-playing');
 const mediaImageEl = document.querySelector<HTMLImageElement>('#media-image');
 const mediaTitleEl = document.querySelector<HTMLHeadingElement>('#media-title');
 const mediaStationEl = document.querySelector<HTMLParagraphElement>('#media-station');
 const mediaPfmEl = document.querySelector<HTMLParagraphElement>('#media-pfm');
 const mediaTimeEl = document.querySelector<HTMLParagraphElement>('#media-time');
+const prevEl = document.querySelector<HTMLButtonElement>('#prev');
+const playPauseEl = document.querySelector<HTMLButtonElement>('#play-pause');
+const nextEl = document.querySelector<HTMLButtonElement>('#next');
 const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
+const hideNowPlayingEl = document.querySelector<HTMLButtonElement>('#hide-now-playing');
 const dialogEl = document.querySelector<HTMLDialogElement>('#dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
-const panelEl = document.querySelector<HTMLUListElement>('#panel');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!areaEl || !statusEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl || !mediaTimeEl
-  || !openDetailsEl || !dialogEl || !detailsEl || !closeDetailsEl || !panelEl || !audioEl) {
+if (!areaEl || !panelEl || !nowPlayingEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl || !mediaTimeEl || !prevEl
+  || !playPauseEl || !nextEl || !openDetailsEl || !hideNowPlayingEl || !dialogEl || !detailsEl || !closeDetailsEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -553,16 +562,14 @@ const init = async () => {
   try {
     const areaId = area.id;
     if (!areaId) {
-      statusEl.textContent = '現在地の検出に失敗しました';
+      alert('現在地の検出に失敗しました');
       return;
     } else if (areaId === 'OUT') {
-      statusEl.textContent = 'サービス提供エリア外のためTinyRadiを利用できません';
+      alert('サービス提供エリア外のためTinyRadiを利用できません');
       return;
     }
     const areaName = area.name ?? '不明な現在地';
     areaEl.textContent = areaName;
-
-    statusEl.textContent = '局を選択してください';
 
     updatePrograms(areaId).then(() => {
       renderStations(true);
@@ -588,7 +595,6 @@ const init = async () => {
         playingButton.classList.remove('playing');
       }
       const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${player.stationId}"]`);
-      statusEl.textContent = `開始しています...`;
       if (button) {
         button.classList.add('playing');
       }
@@ -596,31 +602,36 @@ const init = async () => {
       renderMetadata(metadata);
       renderNowPlaying(metadata);
       renderProgramDetails(metadata);
+      nowPlayingEl.hidden = false;
+      playPauseEl.disabled = true;
+      playPauseEl.textContent = '一時停止';
     });
     player.listenEvent('play', () => {
       const stationId = player.stationId;
       const buttons = panelEl.querySelectorAll('button');
       const targetButton = Array.from(buttons).find((button) => button.value === stationId);
-      statusEl.textContent = '再生中';
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
-      openDetailsEl.disabled = false;
+      nowPlayingEl.hidden = false;
+      playPauseEl.disabled = false;
+      playPauseEl.textContent = '一時停止';
     });
     player.listenEvent('pause', () => {
       const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
-      statusEl.textContent = '一時停止';
       if (button) {
         button.classList.remove('playing');
       }
+      playPauseEl.textContent = '再生';
     });
     player.listenEvent('stop', () => {
-      statusEl.textContent = '停止';
       const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
       if (button) {
         button.classList.remove('playing');
       }
-      openDetailsEl.disabled = true;
+      nowPlayingEl.hidden = true;
+      playPauseEl.disabled = true;
+      playPauseEl.textContent = '再生';
       const metadata = prepareMetadata();
       renderMetadata(metadata);
       renderNowPlaying(metadata);
@@ -628,7 +639,7 @@ const init = async () => {
     });
 
   } catch (error) {
-    statusEl.textContent = `初期化に失敗しました: ${String(error)}`;
+    alert(`初期化に失敗しました: ${String(error)}`);
   }
 };
 
@@ -648,7 +659,7 @@ const play = async (stationId: string) => {
   try {
     await player.play(stationId);
   } catch (error) {
-    statusEl.textContent = `再生に失敗しました: ${String(error)}`;
+    alert(`再生に失敗しました: ${String(error)}`);
   }
 };
 
@@ -661,10 +672,36 @@ panelEl.addEventListener('click', async (event) => {
   await play(stationId);
 });
 
+playPauseEl.addEventListener('click', () => {
+  const stationId = player.stationId;
+  if (stationId) {
+    player.togglePlay();
+  }
+});
+
+const trackBy = (offset: number) => {
+  const currentIndex = programsByStation.findIndex((station) => station.id === player.stationId);
+  const nextIndex = (currentIndex + offset + programsByStation.length) % programsByStation.length;
+  const stationId = programsByStation[nextIndex].id ?? '';
+  play(stationId);
+};
+
+prevEl.addEventListener('click', () => {
+  trackBy(-1);
+});
+
+nextEl.addEventListener('click', () => {
+  trackBy(1);
+});
+
 openDetailsEl.addEventListener('click', () => {
   dialogEl.showModal();
   const metadata = prepareMetadata();
   renderProgramDetails(metadata, true);
+});
+
+hideNowPlayingEl.addEventListener('click', () => {
+  nowPlayingEl.hidden = true;
 });
 
 closeDetailsEl.addEventListener('click', () => {
@@ -676,16 +713,6 @@ dialogEl.addEventListener('close', () => {
 });
 
 if ('mediaSession' in navigator) {
-  const trackBy = (offset: number) => {
-    const currentIndex = programsByStation.findIndex((station) => station.id === player.stationId);
-    const nextIndex = (currentIndex + offset + programsByStation.length) % programsByStation.length;
-    const stationId = programsByStation[nextIndex].id ?? '';
-    const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${stationId}"]`);
-    if (button) {
-      button.focus();
-    }
-    play(stationId);
-  };
   navigator.mediaSession.setActionHandler('nexttrack', () => {
     trackBy(1);
   });
@@ -743,6 +770,12 @@ document.addEventListener('keydown', (event) => {
     }
     case 'ArrowRight': {
       move('horizontal', 1);
+      break;
+    }
+    case 'Enter': {
+      if (event.repeat) {
+        event.preventDefault();
+      }
       break;
     }
   }
