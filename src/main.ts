@@ -571,10 +571,6 @@ const init = async () => {
     const areaName = area.name ?? '不明な現在地';
     areaEl.textContent = areaName;
 
-    updatePrograms(areaId).then(() => {
-      renderStations(true);
-    });
-    const nextMinuteDelay = 60_000 - (Date.now() % 60_000);
     const intervalRender = () => {
       updatePrograms(areaId).then(() => {
         renderStations();
@@ -582,12 +578,36 @@ const init = async () => {
         renderMetadata(metadata);
         renderNowPlaying(metadata);
         renderProgramDetails(metadata);
+        scheduleNextRefresh();
       });
     };
-    setTimeout(() => {
-      setInterval(intervalRender, 60_000);
-      intervalRender();
-    }, nextMinuteDelay);
+    
+    const scheduleNextRefresh = () => {
+      const currentProgram = programsByStation
+        .map((station) => pickCurrentProgram(station.programs))
+        .filter((program): program is Program => program !== null)
+        .reduce<Program | null>((soonest, program) => {
+          if (soonest === null || (program.time.to && soonest.time.to && program.time.to.getTime() < soonest.time.to.getTime())) {
+            return program;
+          }
+          return soonest;
+        }, null);
+
+      if (currentProgram === null || currentProgram.time.to === null) {
+        return;
+      }
+
+      const delay = Math.max(currentProgram.time.to.getTime() - Date.now() + 1000, 30_000);
+
+      setTimeout(() => {
+        void intervalRender();
+      }, delay);
+    };
+
+    updatePrograms(areaId).then(() => {
+      renderStations(true);
+      scheduleNextRefresh();
+    });
 
     player.listenEvent('loadstart', () => {
       const playingButton = panelEl.querySelector<HTMLButtonElement>('button.playing');
