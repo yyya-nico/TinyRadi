@@ -622,6 +622,10 @@ const init = async () => {
       if (button) {
         button.classList.add('playing');
       }
+      const titleSpan = button?.querySelector('.title span');
+      if (titleSpan) {
+        titleSpan.textContent = '読み込み中...';
+      }
       const metadata = prepareMetadata();
       renderMetadata(metadata);
       renderNowPlaying(metadata);
@@ -637,6 +641,11 @@ const init = async () => {
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
+      const titleText = targetButton?.querySelector<HTMLElement>('.title')?.title;
+      const titleSpan = targetButton?.querySelector('.title span');
+      if (titleSpan) {
+        titleSpan.textContent = titleText ?? '';
+      }
       playPauseEl.disabled = false;
       playPauseEl.textContent = '一時停止';
     });
