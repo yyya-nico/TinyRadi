@@ -338,10 +338,11 @@ app.innerHTML = `
       <p id="area"></p>
     </header>
     <ul id="panel"></ul>
-    <div id="now-playing" hidden>
-      <p><img id="media-image" width="480" height="300" alt="No Image"></p>
+    <button id="show-now-playing" disabled>再生画面</button>
+    <dialog id="now-playing">
+      <p><img id="media-image" width="480" height="300" alt="画像なし"></p>
       <div>
-        <h2 id="media-title"></h2>
+        <h2 id="media-title">再生停止中</h2>
         <p id="media-station"></p>
         <p id="media-pfm"></p>
         <p id="media-time"></p>
@@ -349,14 +350,14 @@ app.innerHTML = `
           <button id="prev">前へ</button>
           <button id="play-pause" disabled>再生</button>
           <button id="next">次へ</button>
-          <button id="open-details">番組詳細</button>
+          <button id="open-details" disabled>番組詳細</button>
           <button id="hide-now-playing">非表示</button>
         </p>
+        <dialog id="details-dialog">
+          <div id="details"></div>
+          <button id="close-details">閉じる</button>
+        </dialog>
       </div>
-    </div>
-    <dialog id="dialog">
-      <div id="details"></div>
-      <button id="close-details">閉じる</button>
     </dialog>
     <audio id="audio" autoplay></audio>
   </main>
@@ -372,7 +373,8 @@ app.innerHTML = `
 
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
 const panelEl = document.querySelector<HTMLUListElement>('#panel');
-const nowPlayingEl = document.querySelector<HTMLDivElement>('#now-playing');
+const showNowPlayingEl = document.querySelector<HTMLButtonElement>('#show-now-playing');
+const nowPlayingEl = document.querySelector<HTMLDialogElement>('#now-playing');
 const mediaImageEl = document.querySelector<HTMLImageElement>('#media-image');
 const mediaTitleEl = document.querySelector<HTMLHeadingElement>('#media-title');
 const mediaStationEl = document.querySelector<HTMLParagraphElement>('#media-station');
@@ -383,13 +385,15 @@ const playPauseEl = document.querySelector<HTMLButtonElement>('#play-pause');
 const nextEl = document.querySelector<HTMLButtonElement>('#next');
 const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
 const hideNowPlayingEl = document.querySelector<HTMLButtonElement>('#hide-now-playing');
-const dialogEl = document.querySelector<HTMLDialogElement>('#dialog');
+const detailsDialogEl = document.querySelector<HTMLDialogElement>('#details-dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!areaEl || !panelEl || !nowPlayingEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl || !mediaTimeEl || !prevEl
-  || !playPauseEl || !nextEl || !openDetailsEl || !hideNowPlayingEl || !dialogEl || !detailsEl || !closeDetailsEl || !audioEl) {
+if (!areaEl || !panelEl || !showNowPlayingEl || !nowPlayingEl || !mediaImageEl || !mediaTitleEl
+  || !mediaStationEl || !mediaPfmEl || !mediaTimeEl || !prevEl || !playPauseEl || !nextEl
+  || !openDetailsEl || !hideNowPlayingEl || !detailsDialogEl || !detailsEl || !closeDetailsEl
+  || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -512,8 +516,8 @@ const renderNowPlaying = ({ station, program, changed, isEmpty }: { station: Sta
 
   if (isEmpty || !station || !program) {
     mediaImageEl.src = '';
-    mediaImageEl.alt = 'No Image';
-    mediaTitleEl.textContent = '';
+    mediaImageEl.alt = '画像なし';
+    mediaTitleEl.textContent = '再生停止中';
     mediaStationEl.textContent = '';
     mediaPfmEl.textContent = '';
     mediaTimeEl.textContent = '';
@@ -521,7 +525,7 @@ const renderNowPlaying = ({ station, program, changed, isEmpty }: { station: Sta
   }
   
   mediaImageEl.src = program.img ?? '';
-  mediaImageEl.alt = program.title ?? 'No Image';
+  mediaImageEl.alt = program.title ?? '画像なし';
   mediaTitleEl.textContent = program.title ?? '';
   mediaStationEl.textContent = station.name ?? '';
   mediaPfmEl.textContent = program.pfm ?? '';
@@ -529,7 +533,7 @@ const renderNowPlaying = ({ station, program, changed, isEmpty }: { station: Sta
 };
 
 const renderProgramDetails = ({ station, program, changed, isEmpty }: { station: Station | null; program: Program | null; changed: boolean; isEmpty: boolean }, isOpen: boolean = false) => {
-  if (!dialogEl.open || dialogEl.open && !isOpen && !changed) {
+  if (!detailsDialogEl.open || detailsDialogEl.open && !isOpen && !changed) {
     return;
   }
 
@@ -622,7 +626,7 @@ const init = async () => {
       renderMetadata(metadata);
       renderNowPlaying(metadata);
       renderProgramDetails(metadata);
-      nowPlayingEl.hidden = false;
+      showNowPlayingEl.disabled = openDetailsEl.disabled = false;
       playPauseEl.disabled = true;
       playPauseEl.textContent = '一時停止';
     });
@@ -633,7 +637,6 @@ const init = async () => {
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
-      nowPlayingEl.hidden = false;
       playPauseEl.disabled = false;
       playPauseEl.textContent = '一時停止';
     });
@@ -649,8 +652,7 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
-      nowPlayingEl.hidden = true;
-      playPauseEl.disabled = true;
+      showNowPlayingEl.disabled = playPauseEl.disabled = openDetailsEl.disabled = true;
       playPauseEl.textContent = '再生';
       const metadata = prepareMetadata();
       renderMetadata(metadata);
@@ -715,20 +717,24 @@ nextEl.addEventListener('click', () => {
 });
 
 openDetailsEl.addEventListener('click', () => {
-  dialogEl.showModal();
+  detailsDialogEl.showModal();
   const metadata = prepareMetadata();
   renderProgramDetails(metadata, true);
 });
 
+showNowPlayingEl.addEventListener('click', () => {
+  nowPlayingEl.showModal();
+});
+
 hideNowPlayingEl.addEventListener('click', () => {
-  nowPlayingEl.hidden = true;
+  nowPlayingEl.close();
 });
 
 closeDetailsEl.addEventListener('click', () => {
-  dialogEl.close();
+  detailsDialogEl.close();
 });
 
-dialogEl.addEventListener('close', () => {
+detailsDialogEl.addEventListener('close', () => {
   detailsEl.innerHTML = '';
 });
 
@@ -777,19 +783,31 @@ document.addEventListener('keydown', (event) => {
   }
   switch (event.key) {
     case 'ArrowUp': {
-      move('vertical', -1);
+      if (!nowPlayingEl.open) {
+        move('vertical', -1);
+      }
       break;
     }
     case 'ArrowDown': {
-      move('vertical', 1);
+      if (!nowPlayingEl.open) {
+        move('vertical', 1);
+      }
       break;
     }
     case 'ArrowLeft': {
-      move('horizontal', -1);
+      if (nowPlayingEl.open) {
+        trackBy(-1);
+      } else {
+        move('horizontal', -1);
+      }
       break;
     }
     case 'ArrowRight': {
-      move('horizontal', 1);
+      if (nowPlayingEl.open) {
+        trackBy(1);
+      } else {
+        move('horizontal', 1);
+      }
       break;
     }
     case 'Enter': {

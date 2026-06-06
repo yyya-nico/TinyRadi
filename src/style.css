@@ -82,19 +82,11 @@ header {
     }
 }
 
-#now-playing:not([hidden]) {
+#now-playing[open] {
     display: flex;
     gap: 16px;
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
     width: 660px;
-    max-width: 100%;
     border: solid;
-    padding: 1em;
-    background-color: #ffffff;
-    box-sizing: border-box;
 
     > p {
         flex-shrink: 0;
@@ -104,16 +96,13 @@ header {
         flex-grow: 1;
     }
 
-    @media (width < 768px) {
+    @media (width < 480px) {
         display: block;
-    }
-
-    @media (prefers-color-scheme: dark) {
-        background-color: #121212;
     }
 }
 
 #media-image {
+    display: block;
     width: 240px;
     height: auto;
 }
