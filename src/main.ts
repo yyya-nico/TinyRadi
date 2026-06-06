@@ -362,12 +362,7 @@ app.innerHTML = `
     <audio id="audio" autoplay></audio>
   </main>
   <footer>
-    <p>radiko.jpへのリンク:</p>
-    <ul class="links">
-      <li><a href="https://radiko.jp/#!/timeshift" target="radiko">タイムフリー</a></li>
-      <li><a href="https://radiko.jp/#!/areafree" target="radiko">エリアフリー</a></li>
-      <li><a href="https://radiko.jp/#!/timetable" target="radiko">番組表</a></li>
-    </ul>
+    <p>radiko.jpへのリンク: <a href="https://radiko.jp/#!/timeshift" target="radiko">タイムフリー</a> <a href="https://radiko.jp/#!/areafree" target="radiko">エリアフリー</a> <a href="https://radiko.jp/#!/timetable" target="radiko">番組表</a></p>
   </footer>
 `;
 

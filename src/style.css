@@ -137,26 +137,9 @@ header {
 }
 
 footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    padding: 8px;
-
-    > * {
-        margin: 0;
-    }
-
     @media (width < 768px) {
         font-size: 0.8em;
     }
-}
-
-.links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    padding-inline-start: 0;
-    list-style: none;
 }
 
 :root[data-show-footer="0"] footer {
