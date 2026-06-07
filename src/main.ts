@@ -656,10 +656,10 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
-      const statusEl = button?.querySelector('.status');
-      if (statusEl) {
+      const statusEls = panelEl.querySelectorAll('.status');
+      statusEls.forEach((statusEl) => {
         statusEl.textContent = '';
-      }
+      });
     });
     player.listenEvent('stop', () => {
       showNowPlayingEl.disabled = playPauseEl.disabled = openDetailsEl.disabled = true;
