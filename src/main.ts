@@ -612,15 +612,7 @@ const init = async () => {
     });
 
     player.listenEvent('loadstart', () => {
-      const playingButton = panelEl.querySelector<HTMLButtonElement>('button.playing');
-      if (playingButton) {
-        playingButton.classList.remove('playing');
-      }
-      const playingStatusEl = playingButton?.querySelector('.status');
-      if (playingStatusEl) {
-        playingStatusEl.textContent = '';
-      }
-      const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${player.stationId}"]`);
+      const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
       if (button) {
         button.classList.add('playing');
       }
@@ -637,13 +629,11 @@ const init = async () => {
       playPauseEl.textContent = '一時停止';
     });
     player.listenEvent('play', () => {
-      const stationId = player.stationId;
-      const buttons = panelEl.querySelectorAll('button');
-      const targetButton = Array.from(buttons).find((button) => button.value === stationId);
-      buttons.forEach((button) => {
-        button.classList.toggle('playing', button === targetButton);
-      });
-      const statusEl = targetButton?.querySelector('.status');
+      const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
+      if (button) {
+        button.classList.add('playing');
+      }
+      const statusEl = button?.querySelector('.status');
       if (statusEl) {
         statusEl.textContent = '再生中';
       }
@@ -651,7 +641,7 @@ const init = async () => {
       playPauseEl.textContent = '一時停止';
     });
     player.listenEvent('pause', () => {
-      const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
+      const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
       if (button) {
         button.classList.remove('playing');
       }
@@ -661,8 +651,8 @@ const init = async () => {
       }
       playPauseEl.textContent = '再生';
     });
-    player.listenEvent('stop', () => {
-      const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
+    player.listenEvent('emptied', () => {
+      const button = panelEl.querySelector('button.playing');
       if (button) {
         button.classList.remove('playing');
       }
@@ -670,6 +660,8 @@ const init = async () => {
       if (statusEl) {
         statusEl.textContent = '';
       }
+    });
+    player.listenEvent('stop', () => {
       showNowPlayingEl.disabled = playPauseEl.disabled = openDetailsEl.disabled = true;
       playPauseEl.textContent = '再生';
       const metadata = prepareMetadata();
