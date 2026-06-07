@@ -419,7 +419,9 @@ const renderStations = (init = false) => {
     const { id, name } = station;
     const program = pickCurrentProgram(station.programs);
     const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
-    const isPlaying = player.stationId === id && !player.paused;
+    const isCurrent = player.stationId === id;
+    const isPlaying = isCurrent && !player.paused;
+    const status = isPlaying ? '再生中' : isCurrent ? '一時停止' : '';
     return `
         <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
           <h2>
@@ -431,6 +433,7 @@ const renderStations = (init = false) => {
             </div>
           </h2>
           <p><span title="${pfm ?? ''}">${pfm ?? ''}</span></p>
+          <p class="status">${status}</p>
           <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
         </button>`;
   };
@@ -613,13 +616,17 @@ const init = async () => {
       if (playingButton) {
         playingButton.classList.remove('playing');
       }
+      const playingStatusEl = playingButton?.querySelector('.status');
+      if (playingStatusEl) {
+        playingStatusEl.textContent = '';
+      }
       const button = panelEl.querySelector<HTMLButtonElement>(`button[value="${player.stationId}"]`);
       if (button) {
         button.classList.add('playing');
       }
-      const titleSpan = button?.querySelector('.title span');
-      if (titleSpan) {
-        titleSpan.textContent = '読み込み中...';
+      const statusEl = button?.querySelector('.status');
+      if (statusEl) {
+        statusEl.textContent = '読み込み中...';
       }
       const metadata = prepareMetadata();
       renderMetadata(metadata);
@@ -636,10 +643,9 @@ const init = async () => {
       buttons.forEach((button) => {
         button.classList.toggle('playing', button === targetButton);
       });
-      const titleText = targetButton?.querySelector<HTMLElement>('.title')?.title;
-      const titleSpan = targetButton?.querySelector('.title span');
-      if (titleSpan) {
-        titleSpan.textContent = titleText ?? '';
+      const statusEl = targetButton?.querySelector('.status');
+      if (statusEl) {
+        statusEl.textContent = '再生中';
       }
       playPauseEl.disabled = false;
       playPauseEl.textContent = '一時停止';
@@ -649,12 +655,20 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
+      const statusEl = button?.querySelector('.status');
+      if (statusEl) {
+        statusEl.textContent = '一時停止';
+      }
       playPauseEl.textContent = '再生';
     });
     player.listenEvent('stop', () => {
       const button = panelEl.querySelector<HTMLButtonElement>('button.playing');
       if (button) {
         button.classList.remove('playing');
+      }
+      const statusEl = button?.querySelector('.status');
+      if (statusEl) {
+        statusEl.textContent = '';
       }
       showNowPlayingEl.disabled = playPauseEl.disabled = openDetailsEl.disabled = true;
       playPauseEl.textContent = '再生';
