@@ -337,9 +337,7 @@ app.innerHTML = `
       <h1>TinyRadi</h1>
       <p id="area"></p>
     </header>
-    <ul id="panel"></ul>
-    <button id="show-now-playing" disabled>再生画面</button>
-    <dialog id="now-playing">
+    <div id="now-playing">
       <p><img id="media-image" width="480" height="300" alt="画像なし"></p>
       <div>
         <h2 id="media-title">再生停止中</h2>
@@ -347,18 +345,16 @@ app.innerHTML = `
         <p id="media-pfm"></p>
         <p id="media-time"></p>
         <p class="media-controls">
-          <button id="prev">前へ</button>
           <button id="play-pause" disabled>再生</button>
-          <button id="next">次へ</button>
           <button id="open-details" disabled>番組詳細</button>
-          <button id="hide-now-playing">非表示</button>
         </p>
         <dialog id="details-dialog">
           <div id="details"></div>
           <button id="close-details">閉じる</button>
         </dialog>
       </div>
-    </dialog>
+    </div>
+    <ul id="panel"></ul>
     <audio id="audio" autoplay></audio>
   </main>
   <footer>
@@ -368,27 +364,20 @@ app.innerHTML = `
 
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
 const panelEl = document.querySelector<HTMLUListElement>('#panel');
-const showNowPlayingEl = document.querySelector<HTMLButtonElement>('#show-now-playing');
-const nowPlayingEl = document.querySelector<HTMLDialogElement>('#now-playing');
 const mediaImageEl = document.querySelector<HTMLImageElement>('#media-image');
 const mediaTitleEl = document.querySelector<HTMLHeadingElement>('#media-title');
 const mediaStationEl = document.querySelector<HTMLParagraphElement>('#media-station');
 const mediaPfmEl = document.querySelector<HTMLParagraphElement>('#media-pfm');
 const mediaTimeEl = document.querySelector<HTMLParagraphElement>('#media-time');
-const prevEl = document.querySelector<HTMLButtonElement>('#prev');
 const playPauseEl = document.querySelector<HTMLButtonElement>('#play-pause');
-const nextEl = document.querySelector<HTMLButtonElement>('#next');
 const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
-const hideNowPlayingEl = document.querySelector<HTMLButtonElement>('#hide-now-playing');
 const detailsDialogEl = document.querySelector<HTMLDialogElement>('#details-dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!areaEl || !panelEl || !showNowPlayingEl || !nowPlayingEl || !mediaImageEl || !mediaTitleEl
-  || !mediaStationEl || !mediaPfmEl || !mediaTimeEl || !prevEl || !playPauseEl || !nextEl
-  || !openDetailsEl || !hideNowPlayingEl || !detailsDialogEl || !detailsEl || !closeDetailsEl
-  || !audioEl) {
+if (!areaEl || !panelEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl
+  || !mediaTimeEl || !playPauseEl || !openDetailsEl || !detailsDialogEl || !detailsEl || !closeDetailsEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -418,10 +407,9 @@ const renderStations = (init = false) => {
   const buildButton = (station: Station & { programs: Program[] }) => {
     const { id, name } = station;
     const program = pickCurrentProgram(station.programs);
-    const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
+    const { id: programId, title, time: { formatted: time } = {} } = program || {};
     const isCurrent = player.stationId === id;
     const isPlaying = isCurrent && !player.paused;
-    const status = isPlaying ? '再生中' : isCurrent ? '一時停止' : '';
     return `
         <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
           <h2>
@@ -432,8 +420,6 @@ const renderStations = (init = false) => {
               <span>${name ?? '不明な放送局'}</span>
             </div>
           </h2>
-          <p><span title="${pfm ?? ''}">${pfm ?? ''}</span></p>
-          <p class="status">${status}</p>
           <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
         </button>`;
   };
@@ -616,15 +602,11 @@ const init = async () => {
       if (button) {
         button.classList.add('playing');
       }
-      const statusEl = button?.querySelector('.status');
-      if (statusEl) {
-        statusEl.textContent = '読み込み中...';
-      }
       const metadata = prepareMetadata();
       renderMetadata(metadata);
       renderNowPlaying(metadata);
       renderProgramDetails(metadata);
-      showNowPlayingEl.disabled = openDetailsEl.disabled = false;
+      openDetailsEl.disabled = false;
       playPauseEl.disabled = true;
       playPauseEl.textContent = '一時停止';
     });
@@ -632,10 +614,6 @@ const init = async () => {
       const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
       if (button) {
         button.classList.add('playing');
-      }
-      const statusEl = button?.querySelector('.status');
-      if (statusEl) {
-        statusEl.textContent = '再生中';
       }
       playPauseEl.disabled = false;
       playPauseEl.textContent = '一時停止';
@@ -645,10 +623,6 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
-      const statusEl = button?.querySelector('.status');
-      if (statusEl) {
-        statusEl.textContent = '一時停止';
-      }
       playPauseEl.textContent = '再生';
     });
     player.listenEvent('emptied', () => {
@@ -656,13 +630,9 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
-      const statusEls = panelEl.querySelectorAll('.status');
-      statusEls.forEach((statusEl) => {
-        statusEl.textContent = '';
-      });
     });
     player.listenEvent('stop', () => {
-      showNowPlayingEl.disabled = playPauseEl.disabled = openDetailsEl.disabled = true;
+      playPauseEl.disabled = openDetailsEl.disabled = true;
       playPauseEl.textContent = '再生';
       const metadata = prepareMetadata();
       renderMetadata(metadata);
@@ -718,26 +688,10 @@ const trackBy = (offset: number) => {
   play(stationId);
 };
 
-prevEl.addEventListener('click', () => {
-  trackBy(-1);
-});
-
-nextEl.addEventListener('click', () => {
-  trackBy(1);
-});
-
 openDetailsEl.addEventListener('click', () => {
   detailsDialogEl.showModal();
   const metadata = prepareMetadata();
   renderProgramDetails(metadata, true);
-});
-
-showNowPlayingEl.addEventListener('click', () => {
-  nowPlayingEl.showModal();
-});
-
-hideNowPlayingEl.addEventListener('click', () => {
-  nowPlayingEl.close();
 });
 
 closeDetailsEl.addEventListener('click', () => {
@@ -793,31 +747,19 @@ document.addEventListener('keydown', (event) => {
   }
   switch (event.key) {
     case 'ArrowUp': {
-      if (!nowPlayingEl.open) {
-        move('vertical', -1);
-      }
+      move('vertical', -1);
       break;
     }
     case 'ArrowDown': {
-      if (!nowPlayingEl.open) {
-        move('vertical', 1);
-      }
+      move('vertical', 1);
       break;
     }
     case 'ArrowLeft': {
-      if (nowPlayingEl.open) {
-        trackBy(-1);
-      } else {
-        move('horizontal', -1);
-      }
+      move('horizontal', -1);
       break;
     }
     case 'ArrowRight': {
-      if (nowPlayingEl.open) {
-        trackBy(1);
-      } else {
-        move('horizontal', 1);
-      }
+      move('horizontal', 1);
       break;
     }
     case 'Enter': {
