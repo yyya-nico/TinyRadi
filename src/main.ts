@@ -344,17 +344,14 @@ app.innerHTML = `
         <p id="media-station"></p>
         <p id="media-pfm"></p>
         <p id="media-time"></p>
-        <p class="media-controls">
-          <button id="play-pause" disabled>再生</button>
-          <button id="open-details" disabled>番組詳細</button>
-        </p>
-        <dialog id="details-dialog">
-          <div id="details"></div>
-          <button id="close-details">閉じる</button>
-        </dialog>
       </div>
     </div>
     <ul id="panel"></ul>
+    <button id="open-details" disabled>番組詳細</button>
+    <dialog id="details-dialog">
+      <div id="details"></div>
+      <button id="close-details">閉じる</button>
+    </dialog>
     <audio id="audio" autoplay></audio>
   </main>
   <footer>
@@ -363,21 +360,20 @@ app.innerHTML = `
 `;
 
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
-const panelEl = document.querySelector<HTMLUListElement>('#panel');
 const mediaImageEl = document.querySelector<HTMLImageElement>('#media-image');
 const mediaTitleEl = document.querySelector<HTMLHeadingElement>('#media-title');
 const mediaStationEl = document.querySelector<HTMLParagraphElement>('#media-station');
 const mediaPfmEl = document.querySelector<HTMLParagraphElement>('#media-pfm');
 const mediaTimeEl = document.querySelector<HTMLParagraphElement>('#media-time');
-const playPauseEl = document.querySelector<HTMLButtonElement>('#play-pause');
+const panelEl = document.querySelector<HTMLUListElement>('#panel');
 const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details');
 const detailsDialogEl = document.querySelector<HTMLDialogElement>('#details-dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
 const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
-if (!areaEl || !panelEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl
-  || !mediaTimeEl || !playPauseEl || !openDetailsEl || !detailsDialogEl || !detailsEl || !closeDetailsEl || !audioEl) {
+if (!areaEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl || !mediaTimeEl
+  || !panelEl || !openDetailsEl || !detailsDialogEl || !detailsEl || !closeDetailsEl || !audioEl) {
   throw new Error('required elements not found');
 }
 
@@ -607,23 +603,18 @@ const init = async () => {
       renderNowPlaying(metadata);
       renderProgramDetails(metadata);
       openDetailsEl.disabled = false;
-      playPauseEl.disabled = true;
-      playPauseEl.textContent = '一時停止';
     });
     player.listenEvent('play', () => {
       const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
       if (button) {
         button.classList.add('playing');
       }
-      playPauseEl.disabled = false;
-      playPauseEl.textContent = '一時停止';
     });
     player.listenEvent('pause', () => {
       const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
       if (button) {
         button.classList.remove('playing');
       }
-      playPauseEl.textContent = '再生';
     });
     player.listenEvent('emptied', () => {
       const button = panelEl.querySelector('button.playing');
@@ -632,8 +623,6 @@ const init = async () => {
       }
     });
     player.listenEvent('stop', () => {
-      playPauseEl.disabled = openDetailsEl.disabled = true;
-      playPauseEl.textContent = '再生';
       const metadata = prepareMetadata();
       renderMetadata(metadata);
       renderNowPlaying(metadata);
@@ -648,7 +637,6 @@ const init = async () => {
 const play = async (stationId: string) => {
   const alreadyPlaying = player.stationId === stationId;
   if (alreadyPlaying) {
-    player.togglePlay();
     return;
   }
 
@@ -672,13 +660,6 @@ panelEl.addEventListener('click', async (event) => {
   } 
   const stationId = target.value;
   await play(stationId);
-});
-
-playPauseEl.addEventListener('click', () => {
-  const stationId = player.stationId;
-  if (stationId) {
-    player.togglePlay();
-  }
 });
 
 const trackBy = (offset: number) => {

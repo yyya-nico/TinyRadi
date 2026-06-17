@@ -17,7 +17,7 @@ header {
 #now-playing {
     display: flex;
     gap: 16px;
-    min-height: 240px;
+    min-height: 200px;
 
     > p {
         flex-shrink: 0;
@@ -29,7 +29,7 @@ header {
 
     @media (width < 480px) {
         display: block;
-        min-height: 370px;
+        min-height: 340px;
     }
 }
 
@@ -117,10 +117,6 @@ header {
 
 #media-time {
     font-size: 0.8em;
-}
-
-.media-controls {
-    text-align: right;
 }
 
 #details-dialog {
