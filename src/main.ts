@@ -645,7 +645,7 @@ const init = async () => {
 
 const play = async (stationId: string) => {
   const alreadyPlaying = player.stationId === stationId;
-  if (alreadyPlaying) {
+  if (alreadyPlaying && !player.paused) {
     return;
   }
 
