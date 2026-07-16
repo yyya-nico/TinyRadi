@@ -3,7 +3,9 @@
   const MARK_SCRIPT = "data-tinyradi-script";
   const STORAGE_KEY_ENABLED = "tinyradiEnabled";
   const STORAGE_KEY_SHOW_FOOTER = "tinyradiShowFooter";
+  const STORAGE_KEY_SHOW_NOW_PLAYING = "tinyradiShowNowPlaying";
   const ROOT_SHOW_FOOTER_DATASET = "showFooter";
+  const ROOT_SHOW_NOW_PLAYING_DATASET = "showNowPlaying";
 
   const getSettings = () =>
     new Promise((resolve) => {
@@ -11,11 +13,13 @@
         {
           [STORAGE_KEY_ENABLED]: true,
           [STORAGE_KEY_SHOW_FOOTER]: true,
+          [STORAGE_KEY_SHOW_NOW_PLAYING]: true,
         },
         (result) => {
           resolve({
             enabled: result[STORAGE_KEY_ENABLED] !== false,
             showFooter: result[STORAGE_KEY_SHOW_FOOTER] !== false,
+            showNowPlaying: result[STORAGE_KEY_SHOW_NOW_PLAYING] !== false,
           });
         }
       );
@@ -32,6 +36,17 @@
     document.documentElement.dataset[ROOT_SHOW_FOOTER_DATASET] = "0";
   };
 
+  const applyShowNowPlaying = (showNowPlaying) => {
+    if (!document.documentElement) {
+      return;
+    }
+    if (showNowPlaying) {
+      document.documentElement.dataset[ROOT_SHOW_NOW_PLAYING_DATASET] = "1";
+      return;
+    }
+    document.documentElement.dataset[ROOT_SHOW_NOW_PLAYING_DATASET] = "0";
+  };
+
   const watchShowFooter = () => {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local") {
@@ -42,6 +57,19 @@
       }
       const nextValue = changes[STORAGE_KEY_SHOW_FOOTER]?.newValue !== false;
       applyShowFooter(nextValue);
+    });
+  };
+
+  const watchShowNowPlaying = () => {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local") {
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(changes, STORAGE_KEY_SHOW_NOW_PLAYING)) {
+        return;
+      }
+      const nextValue = changes[STORAGE_KEY_SHOW_NOW_PLAYING]?.newValue !== false;
+      applyShowNowPlaying(nextValue);
     });
   };
 
@@ -167,7 +195,9 @@
       }
       return replaceBodyWithExtensionApp().then(() => {
         applyShowFooter(settings.showFooter);
+        applyShowNowPlaying(settings.showNowPlaying);
         watchShowFooter();
+        watchShowNowPlaying();
       });
     })
     .catch((error) => {

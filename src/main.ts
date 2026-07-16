@@ -403,9 +403,10 @@ const renderStations = (init = false) => {
   const buildButton = (station: Station & { programs: Program[] }) => {
     const { id, name } = station;
     const program = pickCurrentProgram(station.programs);
-    const { id: programId, title, time: { formatted: time } = {} } = program || {};
+    const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
     const isCurrent = player.stationId === id;
     const isPlaying = isCurrent && !player.paused;
+    const status = isPlaying ? '再生中' : isCurrent ? '一時停止' : '';
     return `
         <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
           <h2>
@@ -416,6 +417,8 @@ const renderStations = (init = false) => {
               <span>${name ?? '不明な放送局'}</span>
             </div>
           </h2>
+          <p class="pfm"><span title="${pfm ?? ''}">${pfm ?? ''}</span></p>
+          <p class="status">${status}</p>
           <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
         </button>`;
   };
@@ -598,9 +601,10 @@ const init = async () => {
       if (button) {
         button.classList.add('playing');
       }
-      const titleSpan = button?.querySelector('.title span');
-      if (titleSpan) {
-        titleSpan.textContent = '読み込み中...';
+      const loadingDisplaySelector = document.documentElement.dataset.showNowPlaying === '1' ? '.title span' : '.status';
+      const loadingEl = button?.querySelector(loadingDisplaySelector);
+      if (loadingEl) {
+        loadingEl.textContent = '読み込み中...';
       }
       const metadata = prepareMetadata();
       renderMetadata(metadata);
@@ -613,6 +617,10 @@ const init = async () => {
       if (button) {
         button.classList.add('playing');
       }
+      const statusEl = button?.querySelector('.status');
+      if (statusEl) {
+        statusEl.textContent = '再生中';
+      }
       const titleText = button?.querySelector<HTMLElement>('.title')?.title;
       const titleSpan = button?.querySelector('.title span');
       if (titleSpan) {
@@ -624,12 +632,20 @@ const init = async () => {
       if (button) {
         button.classList.remove('playing');
       }
+      const statusEl = button?.querySelector('.status');
+      if (statusEl) {
+        statusEl.textContent = '一時停止';
+      }
     });
     player.listenEvent('emptied', () => {
       const button = panelEl.querySelector('button.playing');
       if (button) {
         button.classList.remove('playing');
       }
+      const statusEls = panelEl.querySelectorAll('.status');
+      statusEls.forEach((statusEl) => {
+        statusEl.textContent = '';
+      });
     });
     player.listenEvent('stop', () => {
       const metadata = prepareMetadata();
