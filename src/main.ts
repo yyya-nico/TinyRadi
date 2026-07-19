@@ -664,11 +664,7 @@ const init = async () => {
 const play = async (stationId: string) => {
   const alreadyPlaying = player.stationId === stationId;
   if (alreadyPlaying) {
-    if (isShowNowPlaying()) {
-      if (player.paused) {
-        player.play();
-      }
-    } else {
+    if (!isShowNowPlaying() || player.paused) {
       player.togglePlay();
     }
     return;
