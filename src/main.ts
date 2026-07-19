@@ -545,6 +545,8 @@ const renderProgramDetails = ({ station, program, changed, isEmpty }: { station:
   lastProgramId = program.id;
 };
 
+const isShowNowPlaying = () => document.documentElement.dataset.showNowPlaying === '1';
+
 const init = async () => {
   try {
     const areaId = area.id;
@@ -601,7 +603,7 @@ const init = async () => {
       if (button) {
         button.classList.add('playing');
       }
-      const loadingDisplaySelector = document.documentElement.dataset.showNowPlaying === '1' ? '.title span' : '.status';
+      const loadingDisplaySelector = isShowNowPlaying() ? '.title span' : '.status';
       const loadingEl = button?.querySelector(loadingDisplaySelector);
       if (loadingEl) {
         loadingEl.textContent = '読み込み中...';
@@ -661,7 +663,14 @@ const init = async () => {
 
 const play = async (stationId: string) => {
   const alreadyPlaying = player.stationId === stationId;
-  if (alreadyPlaying && !player.paused) {
+  if (alreadyPlaying) {
+    if (isShowNowPlaying()) {
+      if (player.paused) {
+        player.play();
+      }
+    } else {
+      player.togglePlay();
+    }
     return;
   }
 
