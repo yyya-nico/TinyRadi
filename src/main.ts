@@ -241,6 +241,10 @@ class Player {
 
   private hls: Hls | null = null;
 
+  private programDelayMs: number = 0;
+
+  private listenDelayHandler = (_delayMs: number) => {};
+
   stationId: string | null = null;
 
   constructor(api: API, audio: HTMLAudioElement, authToken = '') {
@@ -265,8 +269,21 @@ class Player {
     this.audio.addEventListener(event, handler);
   };
 
+  listenDelayEvent = (handler: (delayMs: number) => void, { once = false } = {}) => {
+    this.listenDelayHandler = (delayMs: number) => {
+      handler(delayMs);
+      if (once) {
+        this.listenDelayHandler = () => {};
+      }
+    };
+  };
+
   get paused() {
     return this.audio.paused;
+  }
+
+  get programDelay() {
+    return this.programDelayMs;
   }
 
   stop = () => {
@@ -311,6 +328,13 @@ class Player {
     hls.attachMedia(this.audio);
     hls.on(Hls.Events.MEDIA_ATTACHED, () => {
       hls.loadSource(streamUrl);
+    });
+    hls.on(Hls.Events.FRAG_CHANGED, (_event, data) => {
+      const programDateTime = data.frag.programDateTime;
+      if (programDateTime) {
+        this.programDelayMs = Date.now() - programDateTime;
+        this.listenDelayHandler(this.programDelayMs);
+      }
     });
   };
 
@@ -385,7 +409,7 @@ const pickCurrentProgram = (programs: Program[]) => {
 
     for (let index = 0; index < programs.length; index += 1) {
         const program = programs[index];
-        if (!program.time.to || now < program.time.to.getTime()) {
+        if (!program.time.to || now < program.time.to.getTime() + player.programDelay) {
             return program;
         }
     }
@@ -570,8 +594,14 @@ const init = async () => {
         scheduleNextRefresh();
       });
     };
+
+    let refreshTimer: number | null = null;
     
     const scheduleNextRefresh = () => {
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
       const currentProgram = programsByStation
         .map((station) => pickCurrentProgram(station.programs))
         .filter((program): program is Program => program !== null)
@@ -586,9 +616,9 @@ const init = async () => {
         return;
       }
 
-      const delay = Math.max(currentProgram.time.to.getTime() - Date.now() + 1000, 30_000);
+      const delay = Math.max(currentProgram.time.to.getTime() + player.programDelay - Date.now(), 30_000);
 
-      setTimeout(() => {
+      refreshTimer = window.setTimeout(() => {
         void intervalRender();
       }, delay);
     };
@@ -628,6 +658,9 @@ const init = async () => {
       if (titleSpan) {
         titleSpan.textContent = titleText ?? '';
       }
+      player.listenDelayEvent((_delayMs: number) => {
+        scheduleNextRefresh();
+      }, { once: true });
     });
     player.listenEvent('pause', () => {
       const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
