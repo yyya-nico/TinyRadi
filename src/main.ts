@@ -409,6 +409,14 @@ const play = async (id: string) => {
   } else {
     await api.stop();
   }
+  panelEl.querySelectorAll('button').forEach((btn) => {
+    const isPlaying = stationId !== '' && btn.value === stationId;
+    btn.classList.toggle('playing', isPlaying);
+    const statusEl = btn.querySelector('.status');
+    if (statusEl) {
+      statusEl.textContent = isPlaying ? '再生中' : '';
+    }
+  });
   const metadata = prepareMetadata();
   renderMetadata(metadata);
   renderNowPlaying(metadata);
@@ -419,14 +427,6 @@ panelEl.addEventListener('click', async (event) => {
   const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
   if (button) {
     await play(button.value);
-    panelEl.querySelectorAll('button').forEach((btn) => {
-      btn.classList.remove('playing');
-    });
-    button.classList.toggle('playing', button.value !== '');
-    const statusEl = button.querySelector('.status');
-    if (statusEl) {
-      statusEl.textContent = button.value ? '再生中' : '';
-    }
   }
 });
 
