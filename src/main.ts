@@ -350,6 +350,11 @@ const init = async () => {
     }
     areaEl.textContent = area;
 
+    const metadata = prepareMetadata();
+    renderMetadata(metadata);
+    renderNowPlaying(metadata);
+    renderProgramDetails(metadata);
+
     const intervalRender = () => {
       updatePrograms(area).then(() => {
         renderStations();
