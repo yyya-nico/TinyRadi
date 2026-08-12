@@ -179,7 +179,7 @@ if (!areaEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl 
 }
 
 const info = await api.info();
-const areaId = info.area?.id ?? '';
+const { id: areaId = '', name: areaName = '' } = info.area ?? {};
 let stationId = info.stationId;
 
 const pickCurrentProgram = (programs: Program[]) => {
@@ -352,7 +352,7 @@ const init = async () => {
       alert('サービス提供エリア外のためTinyRadiを利用できません');
       return;
     }
-    areaEl.textContent = areaId;
+    areaEl.textContent = areaName ?? '';
 
     const intervalRender = () => {
       updatePrograms(areaId).then(() => {
