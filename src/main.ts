@@ -149,7 +149,7 @@ app.innerHTML = `
       </div>
     </div>
     <ul id="panel"></ul>
-    <button id="open-details" disabled>番組詳細</button>
+    <button id="open-details">番組詳細</button>
     <dialog id="details-dialog">
       <div id="details"></div>
       <button id="close-details">閉じる</button>
