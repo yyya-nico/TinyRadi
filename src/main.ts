@@ -403,7 +403,8 @@ const init = async () => {
   }
 };
 
-const play = async (stationId: string) => {
+const play = async (id: string) => {
+  stationId = id;
   if (stationId) {
     await api.play(stationId);
   } else {
