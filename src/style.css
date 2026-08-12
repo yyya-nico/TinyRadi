@@ -35,19 +35,12 @@ header {
 
 #panel {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    grid-auto-rows: 120px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-auto-rows: 90px;
     place-content: center;
     gap: 8px;
-    min-height: calc(100vh - 200px);
     padding-inline-start: 0;
     list-style: none;
-
-    :root[data-show-now-playing="1"] & {
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        grid-auto-rows: 80px;
-        min-height: auto;
-    }
 
     button {
         display: flex;
@@ -104,10 +97,6 @@ header {
             align-self: flex-end;
             font-size: 0.8em;
         }
-
-        :root[data-show-now-playing="1"] & :is(.pfm, .status) {
-            display: none;
-        }
     }
 }
 
@@ -146,12 +135,4 @@ footer {
     @media (width < 768px) {
         font-size: 0.8em;
     }
-}
-
-:root[data-show-footer="0"] footer {
-    display: none;
-}
-
-:root[data-show-now-playing="0"] #now-playing {
-    display: none;
 }

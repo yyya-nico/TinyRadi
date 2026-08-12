@@ -1,17 +1,8 @@
 import './style.css';
 
-import Hls from 'hls.js';
-
-type Area = {
-  id: string | null;
-  name: string | null;
-  nameEn?: string | null;
-};
-
-type StationInfo = {
-  areafree: boolean;
-  timefree: boolean;
-  href: string | null;
+type Info = {
+  area: string | null;
+  stationId: string | null;
 };
 
 type Station = {
@@ -45,10 +36,6 @@ type Program = {
 };
 
 class API {
-  private static readonly AUTH_KEY_VALUE = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa';
-  private appId: string;
-  private device: string;
-
   private parseXml = (txt: string) => {
     const parser = new DOMParser();
     return parser.parseFromString(txt, 'application/xml');
@@ -68,47 +55,30 @@ class API {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  private decodeXmlEntity = (value: string) => value.replaceAll('&amp;', '&');
+  info = () =>
+    fetch('/api/info')
+    .then((res) => res.json())
+    .then((json) => {
+      return json.info as Info;
+    });
 
-  private buildPartialKey = (keyOffset: number, keyLength: number) => {
-    const partial = API.AUTH_KEY_VALUE.slice(keyOffset, keyOffset + keyLength);
-    return btoa(partial);
-  };
-
-  constructor(appId: string = 'pc_html5', device: string = 'pc') {
-    this.appId = appId;
-    this.device = device;
-  }
-
-  area = () =>
-    fetch('https://api.radiko.jp/apparea/area', {
-      credentials: 'include',
+  play = (stationId: string) =>
+    fetch(`/api/play`, { 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        station: stationId,
+      }),
     })
-    .then((res) => res.text())
-    .then((txt) => {
-      const [, id, name] = txt.match(/class="([^"]+)">([a-zA-Z ]+)/) ?? [, null, null];
-      return { id, name } as Area;
-    });
+    .then((res) => res.json()) as Promise<{ ok: boolean; stationId: string | null }>;
 
-  stations = (areaId: string) =>
-    fetch(`https://radiko.jp/v3/station/list/${areaId}.xml`)
-    .then((res) => res.text())
-    .then((txt) => {
-      const doc = this.parseXml(txt);
-      const area: Area = {
-        id: doc.querySelector('stations')?.getAttribute('area_id') || null,
-        name: doc.querySelector('stations')?.getAttribute('area_name') || null,
-      };
-      const stations: (Station & StationInfo)[] = Array.from(doc.querySelectorAll('station'))
-        .map((el) => ({
-          id: el.querySelector('id')?.textContent || null,
-          name: el.querySelector('name')?.textContent || null,
-          areafree: el.querySelector('areafree')?.textContent === '1',
-          timefree: el.querySelector('timefree')?.textContent === '1',
-          href: el.querySelector('href')?.textContent || null,
-        }));
-      return { area, stations };
-    });
+  stop = () =>
+    fetch(`/api/stop`, { 
+      method: 'POST',
+    })
+    .then((res) => res.json()) as Promise<{ ok: boolean; }>;
 
   nowPrograms = (areaId: string) =>
     fetch(`https://api.radiko.jp/program/v3/now/${areaId}.xml`)
@@ -154,198 +124,6 @@ class API {
       });
       return stations;
     });
-
-  auth1 = () =>
-    fetch('https://radiko.jp/v2/api/auth1', {
-      headers: {
-        'X-Radiko-App': this.appId,
-        'X-Radiko-App-Version': '0.0.1',
-        'X-Radiko-User': 'dummy_user',
-        'X-Radiko-Device': this.device,
-      },
-      credentials: 'include',
-    });
-
-  auth2 = (params: { authToken: string; partialKey: string; lat?: number; lng?: number }) => {
-    const headers = new Headers({
-      'X-Radiko-AuthToken': params.authToken,
-      'X-Radiko-PartialKey': params.partialKey,
-      'X-Radiko-User': 'dummy_user',
-      'X-Radiko-Device': this.device,
-    });
-
-    if (params.lat !== undefined && params.lng !== undefined) {
-      headers.append('X-Radiko-Location', `${params.lat},${params.lng}`);
-      headers.append('X-Radiko-Connection', 'mobile');
-    }
-
-    return fetch('https://radiko.jp/v2/api/auth2', {
-      headers,
-      credentials: 'include',
-    });
-  };
-
-  authorize = async () => {
-    const auth1Res = await this.auth1();
-    if (!auth1Res.ok) {
-      throw new Error('auth1 failed');
-    }
-
-    const authToken = auth1Res.headers.get('X-Radiko-Authtoken');
-    const keyOffset = auth1Res.headers.get('X-Radiko-Keyoffset');
-    const keyLength = auth1Res.headers.get('X-Radiko-Keylength');
-    if (!authToken || !keyOffset || !keyLength) {
-      throw new Error('auth1 response headers are missing');
-    }
-
-    const partialKey = this.buildPartialKey(Number(keyOffset), Number(keyLength));
-    const auth2Res = await this.auth2({ authToken, partialKey });
-    if (!auth2Res.ok) {
-      throw new Error('auth2 failed');
-    }
-    const area: Area = await auth2Res.text().then((txt) => {
-      const [id, name, nameEn] = txt.trim().split(',');
-      return { id, name, nameEn };
-    });
-
-    return { authToken, area };
-  };
-
-  stationStreamUrl = async (stationId: string, areafree = false) => {
-    const txt = await fetch(`https://radiko.jp/v3/station/stream/${this.appId}/${stationId}.xml`).then((res) => res.text());
-    const doc = this.parseXml(txt);
-    const areafreeAttr = areafree ? '1' : '0';
-    const urls = Array.from(doc.querySelectorAll('urls > url'))
-      .filter((el) => el.getAttribute('timefree') === '0')
-      .filter((el) => el.getAttribute('areafree') === areafreeAttr)
-      .map((el) => el.querySelector('playlist_create_url')?.textContent)
-      .filter((url): url is string => Boolean(url));
-
-    const selected = urls[1] ?? urls[0];
-    if (!selected) {
-      throw new Error('stream url not found');
-    }
-
-    const base = this.decodeXmlEntity(selected);
-    return `${base}?station_id=${stationId}&l=15&type=c&lsid=`;
-  };
-
-}
-
-class Player {
-  private audio: HTMLAudioElement;
-
-  private api: API;
-
-  private authToken: string;
-
-  private hls: Hls | null = null;
-
-  private programDelayMs: number = 0;
-
-  private listenDelayHandler = (_delayMs: number) => {};
-
-  stationId: string | null = null;
-
-  constructor(api: API, audio: HTMLAudioElement, authToken = '') {
-    this.api = api;
-    this.audio = audio;
-    this.authToken = authToken;
-    setInterval(this.updateToken, 70 * 60_000);
-  }
-
-  private updateToken = async () => {
-    this.authToken = await this.api.authorize().then((result) => result.authToken);
-  }
-
-  private destroyHls = () => {
-    if (this.hls) {
-      this.hls.destroy();
-      this.hls = null;
-    }
-  };
-
-  listenEvent = (event: string, handler: () => void) => {
-    this.audio.addEventListener(event, handler);
-  };
-
-  listenDelayEvent = (handler: (delayMs: number) => void, { once = false } = {}) => {
-    this.listenDelayHandler = (delayMs: number) => {
-      handler(delayMs);
-      if (once) {
-        this.listenDelayHandler = () => {};
-      }
-    };
-  };
-
-  get paused() {
-    return this.audio.paused;
-  }
-
-  get programDelay() {
-    return this.programDelayMs;
-  }
-
-  stop = () => {
-    this.destroyHls();
-    this.stationId = null;
-    this.audio.dispatchEvent(new Event('stop'));
-  };
-
-  pause = () => {
-    this.audio.pause();
-  };
-
-  play = async (stationId?: string) => {
-    const isResume = !stationId;
-    if (isResume) {
-      this.audio.play();
-      return;
-    }
-    this.destroyHls();
-    this.stationId = stationId;
-
-    const streamUrl = await this.api.stationStreamUrl(stationId, false);
-
-    if (!Hls.isSupported()) {
-      throw new Error('hls.js is not supported in this browser');
-    }
-
-    const hls = new Hls({
-      xhrSetup: (xhr, url) => {
-        if (/playlist.m3u8/.test(url)) {
-          xhr.setRequestHeader('X-Radiko-AuthToken', this.authToken);
-          xhr.withCredentials = !/(wowza|smartstream\.ne\.jp)/.test(url);
-        }
-      },
-      maxMaxBufferLength: 30,
-      defaultAudioCodec: 'mp4a.40.5',
-      fragLoadingMaxRetry: 2,
-      levelLoadingMaxRetry: 2,
-    });
-    this.hls = hls;
-
-    hls.attachMedia(this.audio);
-    hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-      hls.loadSource(streamUrl);
-    });
-    hls.on(Hls.Events.FRAG_CHANGED, (_event, data) => {
-      const programDateTime = data.frag.programDateTime;
-      if (programDateTime) {
-        this.programDelayMs = Date.now() - programDateTime;
-        this.listenDelayHandler(this.programDelayMs);
-      }
-    });
-  };
-
-  togglePlay = () => {
-    if (this.audio.paused) {
-      this.audio.play();
-    } else {
-      this.audio.pause();
-    }
-  };
-
 }
 
 const api = new API();
@@ -376,11 +154,7 @@ app.innerHTML = `
       <div id="details"></div>
       <button id="close-details">閉じる</button>
     </dialog>
-    <audio id="audio" autoplay></audio>
   </main>
-  <footer>
-    <p>radiko.jpへのリンク: <a href="https://radiko.jp/#!/timeshift" target="radiko">タイムフリー</a> <a href="https://radiko.jp/#!/areafree" target="radiko">エリアフリー</a> <a href="https://radiko.jp/#!/timetable" target="radiko">番組表</a></p>
-  </footer>
 `;
 
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
@@ -394,22 +168,22 @@ const openDetailsEl = document.querySelector<HTMLButtonElement>('#open-details')
 const detailsDialogEl = document.querySelector<HTMLDialogElement>('#details-dialog');
 const detailsEl = document.querySelector<HTMLDivElement>('#details');
 const closeDetailsEl = document.querySelector<HTMLButtonElement>('#close-details');
-const audioEl = document.querySelector<HTMLAudioElement>('#audio');
 
 if (!areaEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl || !mediaTimeEl
-  || !panelEl || !openDetailsEl || !detailsDialogEl || !detailsEl || !closeDetailsEl || !audioEl) {
+  || !panelEl || !openDetailsEl || !detailsDialogEl || !detailsEl || !closeDetailsEl) {
   throw new Error('required elements not found');
 }
 
-const { authToken, area } = await api.authorize();
-const player = new Player(api, audioEl, authToken);
+const info = await api.info();
+const area = info.area;
+let stationId = info.stationId;
 
 const pickCurrentProgram = (programs: Program[]) => {
     const now = Date.now();
 
     for (let index = 0; index < programs.length; index += 1) {
         const program = programs[index];
-        if (!program.time.to || now < program.time.to.getTime() + player.programDelay) {
+        if (!program.time.to || now < program.time.to.getTime()) {
             return program;
         }
     }
@@ -428,11 +202,9 @@ const renderStations = (init = false) => {
     const { id, name } = station;
     const program = pickCurrentProgram(station.programs);
     const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
-    const isCurrent = player.stationId === id;
-    const isPlaying = isCurrent && !player.paused;
-    const status = isPlaying ? '再生中' : isCurrent ? '一時停止' : '';
+    const isCurrent = stationId === id;
     return `
-        <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isPlaying ? 'class="playing"' : ''}>
+        <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isCurrent ? 'class="playing"' : ''}>
           <h2>
             <div class="title" title="${title ?? 'タイトルなし'}">
               <span>${title ?? 'タイトルなし'}</span>
@@ -442,7 +214,6 @@ const renderStations = (init = false) => {
             </div>
           </h2>
           <p class="pfm"><span title="${pfm ?? ''}">${pfm ?? ''}</span></p>
-          <p class="status">${status}</p>
           <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
         </button>`;
   };
@@ -478,7 +249,6 @@ const renderStations = (init = false) => {
 let lastProgramId: string | null = null;
 
 const prepareMetadata = () => {
-  const stationId = player.stationId;
   const station = stationId ? programsByStation.find((station) => station.id === stationId) || null : null;
   const program = station ? pickCurrentProgram(station.programs) : null;
   if (!stationId || !station || !program) {
@@ -569,23 +339,19 @@ const renderProgramDetails = ({ station, program, changed, isEmpty }: { station:
   lastProgramId = program.id;
 };
 
-const isShowNowPlaying = () => document.documentElement.dataset.showNowPlaying === '1';
-
 const init = async () => {
   try {
-    const areaId = area.id;
-    if (!areaId) {
+    if (!area) {
       alert('現在地の検出に失敗しました');
       return;
-    } else if (areaId === 'OUT') {
+    } else if (area === 'OUT') {
       alert('サービス提供エリア外のためTinyRadiを利用できません');
       return;
     }
-    const areaName = area.name ?? '不明な現在地';
-    areaEl.textContent = areaName;
+    areaEl.textContent = area;
 
     const intervalRender = () => {
-      updatePrograms(areaId).then(() => {
+      updatePrograms(area).then(() => {
         renderStations();
         const metadata = prepareMetadata();
         renderMetadata(metadata);
@@ -616,117 +382,51 @@ const init = async () => {
         return;
       }
 
-      const delay = Math.max(currentProgram.time.to.getTime() + player.programDelay - Date.now(), 30_000);
+      const delay = Math.max(currentProgram.time.to.getTime() - Date.now(), 30_000);
 
       refreshTimer = window.setTimeout(() => {
         void intervalRender();
       }, delay);
     };
 
-    updatePrograms(areaId).then(() => {
+    updatePrograms(area).then(() => {
       renderStations(true);
       scheduleNextRefresh();
     });
-
-    player.listenEvent('loadstart', () => {
-      const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
-      if (button) {
-        button.classList.add('playing');
-      }
-      const loadingDisplaySelector = isShowNowPlaying() ? '.title span' : '.status';
-      const loadingEl = button?.querySelector(loadingDisplaySelector);
-      if (loadingEl) {
-        loadingEl.textContent = '読み込み中...';
-      }
-      const metadata = prepareMetadata();
-      renderMetadata(metadata);
-      renderNowPlaying(metadata);
-      renderProgramDetails(metadata);
-      openDetailsEl.disabled = false;
-    });
-    player.listenEvent('play', () => {
-      const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
-      if (button) {
-        button.classList.add('playing');
-      }
-      const statusEl = button?.querySelector('.status');
-      if (statusEl) {
-        statusEl.textContent = '再生中';
-      }
-      const titleText = button?.querySelector<HTMLElement>('.title')?.title;
-      const titleSpan = button?.querySelector('.title span');
-      if (titleSpan) {
-        titleSpan.textContent = titleText ?? '';
-      }
-      player.listenDelayEvent((_delayMs: number) => {
-        scheduleNextRefresh();
-      }, { once: true });
-    });
-    player.listenEvent('pause', () => {
-      const button = panelEl.querySelector(`button[value="${player.stationId}"]`);
-      if (button) {
-        button.classList.remove('playing');
-      }
-      const statusEl = button?.querySelector('.status');
-      if (statusEl) {
-        statusEl.textContent = '一時停止';
-      }
-    });
-    player.listenEvent('emptied', () => {
-      const button = panelEl.querySelector('button.playing');
-      if (button) {
-        button.classList.remove('playing');
-      }
-      const statusEls = panelEl.querySelectorAll('.status');
-      statusEls.forEach((statusEl) => {
-        statusEl.textContent = '';
-      });
-    });
-    player.listenEvent('stop', () => {
-      const metadata = prepareMetadata();
-      renderMetadata(metadata);
-      renderNowPlaying(metadata);
-      renderProgramDetails(metadata);
-    });
-
   } catch (error) {
     alert(`初期化に失敗しました: ${String(error)}`);
   }
 };
 
 const play = async (stationId: string) => {
-  const alreadyPlaying = player.stationId === stationId;
-  if (alreadyPlaying) {
-    if (!isShowNowPlaying() || player.paused) {
-      player.togglePlay();
-    }
-    return;
+  if (stationId) {
+    await api.play(stationId);
+  } else {
+    await api.stop();
   }
-
-  const isStopButton = stationId === '';
-  if (isStopButton) {
-    player.stop();
-    return;
-  }
-
-  try {
-    await player.play(stationId);
-  } catch (error) {
-    alert(`再生に失敗しました: ${String(error)}`);
-  }
+  const metadata = prepareMetadata();
+  renderMetadata(metadata);
+  renderNowPlaying(metadata);
+  renderProgramDetails(metadata);
 };
 
 panelEl.addEventListener('click', async (event) => {
-  const target = (event.target as HTMLElement).closest('button');
-  if (!target) {
-    return;
-  } 
-  const stationId = target.value;
-  await play(stationId);
+  const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
+  if (button) {
+    await play(button.value);
+    panelEl.querySelectorAll('button').forEach((btn) => {
+      btn.classList.remove('playing');
+    });
+    button.classList.toggle('playing', button.value !== '');
+    const statusEl = button.querySelector('.status');
+    if (statusEl) {
+      statusEl.textContent = button.value ? '再生中' : '';
+    }
+  }
 });
 
 const trackBy = (offset: number) => {
-  const currentIndex = programsByStation.findIndex((station) => station.id === player.stationId);
+  const currentIndex = programsByStation.findIndex((station) => station.id === info.stationId);
   const nextIndex = (currentIndex + offset + programsByStation.length) % programsByStation.length;
   const stationId = programsByStation[nextIndex].id ?? '';
   play(stationId);
@@ -761,7 +461,7 @@ document.addEventListener('keydown', (event) => {
       return;
     }
     const buttons = Array.from(panelEl.querySelectorAll('button'));
-    const currentIndex = buttons.findIndex((button) => button.value === player.stationId || button.value === '');
+    const currentIndex = buttons.findIndex((button) => button.value === info.stationId || button.value === '');
     const nextIndex = (() => {
       if (moveDirection === 'vertical') {
         const panelStyles = getComputedStyle(panelEl);
