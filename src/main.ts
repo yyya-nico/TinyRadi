@@ -350,11 +350,6 @@ const init = async () => {
     }
     areaEl.textContent = area;
 
-    const metadata = prepareMetadata();
-    renderMetadata(metadata);
-    renderNowPlaying(metadata);
-    renderProgramDetails(metadata);
-
     const intervalRender = () => {
       updatePrograms(area).then(() => {
         renderStations();
@@ -396,6 +391,10 @@ const init = async () => {
 
     updatePrograms(area).then(() => {
       renderStations(true);
+      const metadata = prepareMetadata();
+      renderMetadata(metadata);
+      renderNowPlaying(metadata);
+      renderProgramDetails(metadata);
       scheduleNextRefresh();
     });
   } catch (error) {
