@@ -1,7 +1,11 @@
 import './style.css';
 
 type Info = {
-  area: string | null;
+  area: {
+    id: string | null;
+    name: string | null;
+    nameEn: string | null;
+  };
   stationId: string | null;
 };
 
@@ -175,7 +179,7 @@ if (!areaEl || !mediaImageEl || !mediaTitleEl || !mediaStationEl || !mediaPfmEl 
 }
 
 const info = await api.info();
-const area = info.area;
+const areaId = info.area?.id ?? '';
 let stationId = info.stationId;
 
 const pickCurrentProgram = (programs: Program[]) => {
@@ -341,17 +345,17 @@ const renderProgramDetails = ({ station, program, changed, isEmpty }: { station:
 
 const init = async () => {
   try {
-    if (!area) {
+    if (!areaId) {
       alert('現在地の検出に失敗しました');
       return;
-    } else if (area === 'OUT') {
+    } else if (areaId === 'OUT') {
       alert('サービス提供エリア外のためTinyRadiを利用できません');
       return;
     }
-    areaEl.textContent = area;
+    areaEl.textContent = areaId;
 
     const intervalRender = () => {
-      updatePrograms(area).then(() => {
+      updatePrograms(areaId).then(() => {
         renderStations();
         const metadata = prepareMetadata();
         renderMetadata(metadata);
@@ -389,7 +393,7 @@ const init = async () => {
       }, delay);
     };
 
-    updatePrograms(area).then(() => {
+    updatePrograms(areaId).then(() => {
       renderStations(true);
       const metadata = prepareMetadata();
       renderMetadata(metadata);
