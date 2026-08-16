@@ -11,14 +11,17 @@ header {
 }
 
 #panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-auto-rows: 75px;
+    place-content: center;
+    gap: 8px;
     padding-inline-start: 0;
     list-style: none;
 
-    li {
-        margin: .5em 0;
-    }
-
     button {
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
         width: 100%;
         height: 100%;
