@@ -11,13 +11,6 @@ header {
 }
 
 #panel {
-    padding-inline-start: 0;
-    list-style: none;
-
-    li {
-        margin: .5em 0;
-    }
-
     button {
         overflow: hidden;
         width: 100%;

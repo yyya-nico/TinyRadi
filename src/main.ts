@@ -143,12 +143,12 @@ app.innerHTML = `
       <h1>TinyRadi</h1>
       <p id="area"></p>
     </header>
-    <ul id="panel"></ul>
+    <div id="panel"></div>
   </main>
 `;
 
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
-const panelEl = document.querySelector<HTMLUListElement>('#panel');
+const panelEl = document.querySelector<HTMLDivElement>('#panel');
 
 if (!areaEl || !panelEl) {
   throw new Error('required elements not found');
@@ -196,12 +196,12 @@ if (!areaEl || !panelEl) {
       panelEl.innerHTML = programsByStation
         .map((station) => {
           return `
-        <li>
+        <p>
           ${buildButton(station)}
-        </li>`;
+        </p>`;
         })
         .concat([
-          `<li><button value="" id="stop"><h2>停止</h2></button></li>`,
+          `<p><button value="" id="stop"><h2>停止</h2></button></p>`,
         ])
         .join('');
     } else {
