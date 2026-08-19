@@ -74,12 +74,14 @@ header:not([hidden]) {
 }
 
 #now-playing:not([hidden]) {
-    width: 480px;
+    max-width: 480px;
     margin: 0 auto;
 }
 
 #media-image {
     display: block;
+    max-width: 100%;
+    height: auto;
 }
 
 #media-title {
