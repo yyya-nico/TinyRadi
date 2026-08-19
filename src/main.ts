@@ -139,18 +139,43 @@ if (!app) {
 
 app.innerHTML = `
   <main>
-    <header>
+    <header id="header">
       <h1>TinyRadi</h1>
       <p id="area"></p>
     </header>
-    <ul id="panel"></ul>
+    <ul id="panel" hidden></ul>
+    <div id="now-playing" hidden>
+      <p>
+        <button id="select-station">選局画面</button>
+      </p>
+      <p><img id="media-image" width="480" height="300" alt="画像なし"></p>
+      <div>
+        <h2 id="media-title">再生停止中</h2>
+        <p id="media-station"></p>
+        <p id="media-pfm"></p>
+        <p id="media-time"></p>
+      </div>
+      <p class="controls">
+        <button id="play-stop-button">停止</button>
+      </p>
+    </div>
   </main>
 `;
 
+const headerEl = document.querySelector<HTMLHeadingElement>('#header');
 const areaEl = document.querySelector<HTMLParagraphElement>('#area');
 const panelEl = document.querySelector<HTMLUListElement>('#panel');
+const nowPlayingEl = document.querySelector<HTMLDivElement>('#now-playing');
+const selectStationButtonEl = document.querySelector<HTMLButtonElement>('#select-station');
+const mediaImageEl = document.querySelector<HTMLImageElement>('#media-image');
+const mediaTitleEl = document.querySelector<HTMLHeadingElement>('#media-title');
+const mediaStationEl = document.querySelector<HTMLParagraphElement>('#media-station');
+const mediaPfmEl = document.querySelector<HTMLParagraphElement>('#media-pfm');
+const mediaTimeEl = document.querySelector<HTMLParagraphElement>('#media-time');
+const playStopButtonEl = document.querySelector<HTMLButtonElement>('#play-stop-button');
 
-if (!areaEl || !panelEl) {
+if (!headerEl || !areaEl || !panelEl || !nowPlayingEl || !selectStationButtonEl || !mediaImageEl || !mediaTitleEl
+  || !mediaStationEl || !mediaPfmEl || !mediaTimeEl || !playStopButtonEl) {
   throw new Error('required elements not found');
 }
 
@@ -182,12 +207,18 @@ if (!areaEl || !panelEl) {
     const buildButton = (station: Station & { programs: Program[] }) => {
       const { id, name } = station;
       const program = pickCurrentProgram(station.programs);
-      const { id: programId, title, pfm, time: { formatted: time } = {} } = program || {};
+      const { id: programId, title, time: { formatted: time } = {} } = program || {};
       const isCurrent = stationId === id;
       return `
           <button value="${id ?? ''}" data-program-id="${programId ?? ''}" ${isCurrent ? 'class="playing"' : ''}>
-            <h2><span class="title" title="${title ?? 'タイトルなし'}">${title ?? 'タイトルなし'}</span> <span class="station-name" title="${name ?? '不明な放送局'}">${name ?? '不明な放送局'}</span></h2>
-            <p class="pfm"><span title="${pfm ?? ''}">${pfm ?? ''}</span></p>
+            <h2>
+              <div class="title" title="${title ?? 'タイトルなし'}">
+                ${title ?? 'タイトルなし'}
+              </div>
+              <div class="station-name" title="${name ?? '不明な放送局'}">
+                ${name ?? '不明な放送局'}
+              </div>
+            </h2>
             <p class="time"><span title="${time ?? ''}">${time ?? ''}</span></p>
           </button>`;
     };
@@ -200,9 +231,6 @@ if (!areaEl || !panelEl) {
           ${buildButton(station)}
         </li>`;
         })
-        .concat([
-          `<li><button value="" id="stop"><h2>停止</h2></button></li>`,
-        ])
         .join('');
     } else {
       programsByStation.forEach((station) => {
@@ -220,6 +248,48 @@ if (!areaEl || !panelEl) {
     }
   };
 
+  let lastStationId: string | null = stationId;
+  let lastProgramId: string | null = null;
+
+  const prepareMetadata = () => {
+    const station = lastStationId ? programsByStation.find((station) => station.id === lastStationId) || null : null;
+    const program = station ? pickCurrentProgram(station.programs) : null;
+    if (!lastStationId || !station || !program) {
+      const changed = lastProgramId !== null;
+      lastProgramId = null;
+      return { station, program, changed, isEmpty: true };
+    }
+
+    const changed = lastProgramId !== program.id;
+
+    lastProgramId = program.id;
+
+    return { station, program, changed, isEmpty: false };
+  };
+
+  const renderNowPlaying = ({ station, program, changed, isEmpty }: { station: Station | null; program: Program | null; changed: boolean; isEmpty: boolean }) => {
+    if (!changed) {
+      return;
+    }
+
+    if (isEmpty || !station || !program) {
+      mediaImageEl.src = '';
+      mediaImageEl.alt = '画像なし';
+      mediaTitleEl.textContent = '再生停止中';
+      mediaStationEl.textContent = '';
+      mediaPfmEl.textContent = '';
+      mediaTimeEl.textContent = '';
+      return;
+    }
+    
+    mediaImageEl.src = program.img ?? '';
+    mediaImageEl.alt = program.title ?? '画像なし';
+    mediaTitleEl.textContent = program.title ?? '';
+    mediaStationEl.textContent = station.name ?? '';
+    mediaPfmEl.textContent = program.pfm ?? '';
+    mediaTimeEl.textContent = program.time.formatted ?? '';
+  };
+
   const init = async () => {
     try {
       if (!areaId) {
@@ -234,6 +304,8 @@ if (!areaEl || !panelEl) {
       const intervalRender = () => {
         updatePrograms(areaId).then(() => {
           renderStations();
+          const metadata = prepareMetadata();
+          renderNowPlaying(metadata);
           scheduleNextRefresh();
         });
       };
@@ -268,34 +340,65 @@ if (!areaEl || !panelEl) {
 
       updatePrograms(areaId).then(() => {
         renderStations(true);
+        const metadata = prepareMetadata();
+        renderNowPlaying(metadata);
         scheduleNextRefresh();
       });
+
+      if (stationId) {
+        headerEl.hidden = panelEl.hidden = true;
+        nowPlayingEl.hidden = false;
+      } else {
+        headerEl.hidden = panelEl.hidden = false;
+        nowPlayingEl.hidden = true;
+      }
     } catch (error) {
       alert(`初期化に失敗しました: ${String(error)}`);
     }
   };
 
-  const play = async (id: string) => {
+  const play = async (id: string | null = null) => {
     stationId = id;
     if (stationId) {
       await api.play(stationId);
+      lastStationId = stationId;
     } else {
       await api.stop();
     }
     panelEl.querySelectorAll('button').forEach((btn) => {
-      const isPlaying = stationId !== '' && btn.value === stationId;
+      const isPlaying = btn.value === stationId;
       btn.classList.toggle('playing', isPlaying);
-      const statusEl = btn.querySelector('.status');
-      if (statusEl) {
-        statusEl.textContent = isPlaying ? '再生中' : '';
-      }
     });
+    const metadata = prepareMetadata();
+    renderNowPlaying(metadata);
   };
 
   panelEl.addEventListener('click', async (event) => {
     const button = event.target instanceof HTMLElement ? event.target.closest('button') : null;
     if (button) {
-      await play(button.value);
+      const isPlaying = button.value === stationId;
+      if (!isPlaying) {
+        await play(button.value);
+        playStopButtonEl.textContent = '停止';
+      }
+      headerEl.hidden = panelEl.hidden = true;
+      nowPlayingEl.hidden = false;
+    }
+  });
+
+  selectStationButtonEl.addEventListener('click', () => {
+    nowPlayingEl.hidden = true;
+    headerEl.hidden = panelEl.hidden = false;
+  });
+
+  playStopButtonEl.addEventListener('click', async () => {
+    const isPlaying = stationId !== null;
+    if (isPlaying) {
+      await play(null);
+      playStopButtonEl.textContent = '再生';
+    } else {
+      await play(lastStationId);
+      playStopButtonEl.textContent = '停止';
     }
   });
 

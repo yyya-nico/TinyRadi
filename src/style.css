@@ -1,4 +1,4 @@
-header {
+header:not([hidden]) {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -10,7 +10,7 @@ header {
     }
 }
 
-#panel {
+#panel:not([hidden]) {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     grid-auto-rows: 75px;
@@ -20,8 +20,6 @@ header {
     list-style: none;
 
     button {
-        display: flex;
-        flex-direction: column;
         overflow: hidden;
         width: 100%;
         height: 100%;
@@ -39,26 +37,24 @@ header {
         &#stop {
             background-color: #af4c4c;
             color: white;
+
+            h2 {
+                height: 100%;
+            }
         }
 
         > * {
             margin: 0;
         }
 
-        span {
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-        }
-
-        h2, div, p {
-            display: flex;
-            align-items: center;
-        }
-
         h2 {
-            justify-content: space-between;
             font-size: 1.2em;
+
+            div {
+                overflow: hidden;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+            }
         }
 
         .title {
@@ -71,9 +67,34 @@ header {
         }
 
         .time {
-            justify-content: flex-end;
-            margin-block-start: auto;
             font-size: 0.8em;
+            text-align: right;
         }
     }
+}
+
+#now-playing:not([hidden]) {
+    width: 480px;
+    margin: 0 auto;
+}
+
+#media-image {
+    display: block;
+}
+
+#media-title {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+#media-station {
+    font-weight: bold;
+}
+
+#media-time {
+    font-size: 0.8em;
+}
+
+.controls {
+    text-align: center;
 }
