@@ -683,6 +683,7 @@ const init = async () => {
       });
     });
     player.listenEvent('stop', () => {
+      openDetailsEl.disabled = true;
       const metadata = prepareMetadata();
       renderMetadata(metadata);
       renderNowPlaying(metadata);
